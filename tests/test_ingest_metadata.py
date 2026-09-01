@@ -5,10 +5,10 @@ import nibabel as nb
 import numpy as np
 import pytest
 
-from seventprep.bids import sidecar_for
-from seventprep.config import SeriesRule, load_config
-from seventprep.errors import ValidationError
-from seventprep.ingest import _apply_phase_encoding_direction, _convert_plan_to_bids
+from cnapfmriprep.bids import sidecar_for
+from cnapfmriprep.config import SeriesRule, load_config
+from cnapfmriprep.errors import ValidationError
+from cnapfmriprep.ingest import _apply_phase_encoding_direction, _convert_plan_to_bids
 
 
 def _epi_rule(direction: str | None) -> SeriesRule:
@@ -68,7 +68,7 @@ def test_bids_conversion_writes_overrides_to_bold_and_fieldmaps(
 
     converted_iter = iter(converted)
     monkeypatch.setattr(
-        "seventprep.ingest._convert_one_series",
+        "cnapfmriprep.ingest._convert_one_series",
         lambda *args, **kwargs: next(converted_iter),
     )
 

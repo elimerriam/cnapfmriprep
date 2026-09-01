@@ -20,7 +20,7 @@ from typing import Any, Optional
 import typer
 
 from . import __version__
-from .errors import SeventPrepError
+from .errors import CnapFmriPrepError
 
 app = typer.Typer(
     add_completion=False,
@@ -36,7 +36,7 @@ def _emit(value: object) -> None:
 def _run_guarded(function, *args, **kwargs):
     try:
         return function(*args, **kwargs)
-    except SeventPrepError as error:
+    except CnapFmriPrepError as error:
         typer.echo(f"ERROR: {error}", err=True)
         raise typer.Exit(code=2) from error
 
@@ -48,13 +48,13 @@ def _load_attr(module_name: str, attribute: str):
         module = importlib.import_module(f".{module_name}", package=__package__)
         return getattr(module, attribute)
     except (ImportError, AttributeError) as error:
-        if os.environ.get("SEVENTPREP_DEBUG_IMPORTS") == "1":
+        if os.environ.get("CNAPFMRIPREP_DEBUG_IMPORTS") == "1":
             raise
         typer.echo(
-            "ERROR: SevenTPrep could not load "
+            "ERROR: CNAP fMRI Prep could not load "
             f"{qualified}.{attribute}: {type(error).__name__}: {error}\n"
-            "Run 'seventprep doctor' for interpreter and dependency details. "
-            "Set SEVENTPREP_DEBUG_IMPORTS=1 to show the full traceback.",
+            "Run 'cnapfmriprep doctor' for interpreter and dependency details. "
+            "Set CNAPFMRIPREP_DEBUG_IMPORTS=1 to show the full traceback.",
             err=True,
         )
         raise typer.Exit(code=2) from error
@@ -69,7 +69,7 @@ def _distribution_version(name: str) -> str | None:
 
 @app.command("version")
 def version_command() -> None:
-    """Print the seventprep version."""
+    """Print the cnapfmriprep version."""
     typer.echo(__version__)
 
 
@@ -77,7 +77,7 @@ def version_command() -> None:
 def doctor_command() -> None:
     """Report the active interpreter, package locations, and import health."""
     distributions = [
-        "seventprep",
+        "cnapfmriprep",
         "typer",
         "click",
         "pydra",
@@ -90,11 +90,11 @@ def doctor_command() -> None:
         "PyYAML",
     ]
     modules = [
-        "seventprep.config",
-        "seventprep.dicom",
-        "seventprep.ingest",
-        "seventprep.pydra_workflows",
-        "seventprep.preprocess",
+        "cnapfmriprep.config",
+        "cnapfmriprep.dicom",
+        "cnapfmriprep.ingest",
+        "cnapfmriprep.pydra_workflows",
+        "cnapfmriprep.preprocess",
     ]
     imports: dict[str, dict[str, Any]] = {}
     failed = False
@@ -137,7 +137,7 @@ def doctor_command() -> None:
 
     executable_names = [
         "python",
-        "seventprep",
+        "cnapfmriprep",
         "dcm2niix",
         "topup",
         "antsRegistration",
@@ -150,9 +150,9 @@ def doctor_command() -> None:
         "python_executable": sys.executable,
         "python_version": sys.version,
         "conda_prefix": os.environ.get("CONDA_PREFIX"),
-        "seventprep_version": __version__,
-        "seventprep_package": str(Path(__file__).resolve().parent),
-        "console_script": shutil.which("seventprep"),
+        "cnapfmriprep_version": __version__,
+        "cnapfmriprep_package": str(Path(__file__).resolve().parent),
+        "console_script": shutil.which("cnapfmriprep"),
         "executables": {name: shutil.which(name) for name in executable_names},
         "distributions": {name: _distribution_version(name) for name in distributions},
         "pydra_025_api": pydra_api,
@@ -325,7 +325,7 @@ def validate_command(
     expected_no_rf_volumes: int = typer.Option(2, "--expected-no-rf-volumes"),
     skip_official_validator: bool = typer.Option(False, "--skip-official-validator"),
 ) -> None:
-    """Run the official validator and seventprep semantic checks."""
+    """Run the official validator and cnapfmriprep semantic checks."""
     run_official_validator = _load_attr("bids", "run_official_validator")
     semantic_validate = _load_attr("bids", "semantic_validate")
     official = _run_guarded(

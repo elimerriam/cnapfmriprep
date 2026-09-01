@@ -201,7 +201,7 @@ def preprocess_dataset(
     session_label = f"sub_{subject}" + (f"_ses_{session}" if session else "")
     progress_file = work_root / "progress.jsonl"
     workflow, plan = build_session_workflow(
-        name=f"seventprep_{session_label}",
+        name=f"cnapfmriprep_{session_label}",
         cache_dir=work_root / "pydra-cache",
         runs=graph_inputs,
         session_work_dir=work_root / "session",

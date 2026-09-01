@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from seventprep.config import SeriesRule, load_config
+from cnapfmriprep.config import SeriesRule, load_config
 
 
 def test_example_config_loads() -> None:

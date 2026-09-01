@@ -2,7 +2,7 @@
 """Create a tiny BIDS-like dataset for semantic-validator and unit-test demos.
 
 This does not simulate DICOM conversion, NORDIC, TOPUP, or ANTs. It only creates
-image/metadata relationships that exercise seventprep's discovery code.
+image/metadata relationships that exercise cnapfmriprep's discovery code.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ def main() -> None:
     fmap.mkdir(parents=True, exist_ok=True)
     write_json(
         root / "dataset_description.json",
-        {"Name": "synthetic seventprep demo", "BIDSVersion": "1.10.1", "DatasetType": "raw"},
+        {"Name": "synthetic cnapfmriprep demo", "BIDSVersion": "1.10.1", "DatasetType": "raw"},
     )
     affine = np.diag([0.8, 0.8, 0.8, 1.0])
     rng = np.random.default_rng(7)

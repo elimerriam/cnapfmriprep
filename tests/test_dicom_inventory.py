@@ -5,7 +5,7 @@ from pathlib import Path
 from pydicom.dataset import FileDataset, FileMetaDataset
 from pydicom.uid import ExplicitVRLittleEndian, MRImageStorage, generate_uid
 
-from seventprep.dicom import inventory_dicom_series, validated_dicom_fields
+from cnapfmriprep.dicom import inventory_dicom_series, validated_dicom_fields
 
 
 def _write_test_dicom(path: Path) -> None:

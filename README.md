@@ -1,14 +1,21 @@
-# SevenTPrep
+# CNAP fMRI Prep
 
-SevenTPrep is an alpha, study-configured Pydra pipeline for high-resolution 7 T
+CNAP fMRI Prep (`cnapfmriprep`) is an alpha, study-configured Pydra pipeline for high-resolution 7 T
 fMRI. It stops before anatomical alignment and response estimation so that the
 native-resolution outputs can be used with mrAlign and mrTools.
+
+## Release 0.3.1: cnapfmriprep rename
+
+The installable distribution, Python package, provenance metadata, and primary
+command are now named `cnapfmriprep`. The former `seventprep` terminal command
+remains as a temporary compatibility alias, but new scripts should use
+`cnapfmriprep`.
 
 ## Release 0.3.0: guided setup, live progress, safer restarts
 
 Version 0.3.0 keeps the shared multi-run processing introduced in 0.2 and adds:
 
-- `seventprep setup`, a local browser assistant that inventories an archive (or
+- `cnapfmriprep setup`, a local browser assistant that inventories an archive (or
   reads an existing inventory), shows every DICOM series, and lets the user
   select BOLD runs, the AP/PA pair, anatomical scans, and the shared motion
   reference. It writes exact UID-based rules, so run names and run counts may
@@ -116,30 +123,29 @@ TOPUP configurations. Set the NORDIC checkout in YAML or with `NORDIC_ROOT`.
 ## Installation
 
 ```bash
-python -m pip uninstall -y seventprep
-unzip seventprep-0.3.0-source.zip
-cd seventprep-0.3.0
+git clone https://github.com/elimerriam/cnapfmriprep.git
+cd cnapfmriprep
 
 conda env create -f environment.yml
-conda activate seventprep
+conda activate cnapfmriprep
 python -m pip install -e .
 
-seventprep version
-seventprep doctor
+cnapfmriprep version
+cnapfmriprep doctor
 ```
 
-`seventprep doctor` reports the active interpreter, installed package paths, dependency versions, and whether the required Pydra 0.25 API is available.
+`cnapfmriprep doctor` reports the active interpreter, installed package paths, dependency versions, and whether the required Pydra 0.25 API is available.
 
 Expected version:
 
 ```text
-0.3.0
+0.3.1
 ```
 
 ## Inventory an XNAT archive
 
 ```bash
-seventprep inventory /absolute/path/experiment.zip \
+cnapfmriprep inventory /absolute/path/experiment.zip \
   --output-dir work/inventory
 ```
 
@@ -157,7 +163,7 @@ Useful columns include `SeriesNumber`, `AcquisitionTime`,
 The setup assistant can inventory an archive itself:
 
 ```bash
-seventprep setup /absolute/path/experiment.zip \
+cnapfmriprep setup /absolute/path/experiment.zip \
   --template config/example_study.yaml \
   --output config/my_study.yaml \
   --work-dir work/setup
@@ -166,7 +172,7 @@ seventprep setup /absolute/path/experiment.zip \
 Or reuse an existing inventory to avoid extracting the archive again:
 
 ```bash
-seventprep setup \
+cnapfmriprep setup \
   --inventory work/inventory/dicom_series.tsv \
   --template config/example_study.yaml \
   --output config/my_study.yaml
@@ -257,7 +263,7 @@ and EPI fieldmap rule:
 phase_encoding_direction: j-  # valid values: i, i-, j, j-, k, k-
 ```
 
-SevenTPrep adds the configured value only when dcm2niix omits it or reports the
+CNAP fMRI Prep adds the configured value only when dcm2niix omits it or reports the
 same value. A conflicting dcm2niix value is treated as an error so scanner
 metadata cannot be silently replaced. The BIDS direction is relative to the
 converted NIfTI axes; it is not necessarily the same text as the `dir-AP` or
@@ -277,7 +283,7 @@ When `reference_task` and `reference_run` are both `null`, the first selected
 run in stable BIDS ordering is used. Specifying both is safer when a session
 contains multiple tasks.
 
-The reference is not simply the first volume. SevenTPrep applies the shared SDC
+The reference is not simply the first volume. CNAP fMRI Prep applies the shared SDC
 to temporary previews from the reference run, performs two-pass rigid
 realignment, and averages the aligned previews to create a robust undistorted
 reference. All other runs are then registered directly to that fixed image.
@@ -285,7 +291,7 @@ reference. All other runs are then registered directly to that fixed image.
 ## Test the rules without conversion
 
 ```bash
-seventprep inventory /absolute/path/experiment.zip \
+cnapfmriprep inventory /absolute/path/experiment.zip \
   --output-dir work/inventory-matched \
   --config config/my_study.yaml
 ```
@@ -302,7 +308,7 @@ For a multi-run rule, this file contains one row per DICOM series and an
 ## Ingest and validate
 
 ```bash
-seventprep ingest /absolute/path/experiment.zip ./bids \
+cnapfmriprep ingest /absolute/path/experiment.zip ./bids \
   --config config/my_study.yaml \
   --subject 001 \
   --session 01 \
@@ -330,7 +336,7 @@ Each BOLD sidecar points to its own no-RF file and to the common B0 identifier.
 ## Preprocess all runs
 
 ```bash
-seventprep preprocess ./bids ./derivatives/seventprep \
+cnapfmriprep preprocess ./bids ./derivatives/cnapfmriprep \
   --config config/my_study.yaml \
   --subject 001 \
   --session 01 \
@@ -358,13 +364,13 @@ execution:
 Inspect the presets and automatic selection with:
 
 ```bash
-seventprep profiles
+cnapfmriprep profiles
 ```
 
 Override a YAML profile for one run without editing the file:
 
 ```bash
-seventprep preprocess ./bids ./derivatives/seventprep \
+cnapfmriprep preprocess ./bids ./derivatives/cnapfmriprep \
   --config config/my_study.yaml \
   --subject 001 --session 01 \
   --work-dir work/preprocess-sub001-ses01 \
@@ -379,20 +385,20 @@ and logical CPU count.
 ### Restarting after an interruption
 
 Restart the same command with the same work directory. Before launching Pydra,
-SevenTPrep checks the cache and moves only invalid empty results into
+CNAP fMRI Prep checks the cache and moves only invalid empty results into
 `pydra-cache/interrupted-cache-backups/`; valid completed work remains reusable.
 It refuses to modify a cache containing an active lock.
 
 To inspect and perform that recovery without starting preprocessing:
 
 ```bash
-seventprep recover-cache --work-dir work/preprocess-sub001-ses01
+cnapfmriprep recover-cache --work-dir work/preprocess-sub001-ses01
 ```
 
 To publish only one target run while retaining the shared reference behavior:
 
 ```bash
-seventprep preprocess ./bids ./derivatives/seventprep \
+cnapfmriprep preprocess ./bids ./derivatives/cnapfmriprep \
   --config config/my_study.yaml \
   --subject 001 --session 01 \
   --task retinotopy --run 5 \
@@ -408,7 +414,7 @@ published by that invocation.
 After confirming the inventory rules:
 
 ```bash
-seventprep run /absolute/path/experiment.zip ./bids ./derivatives/seventprep \
+cnapfmriprep run /absolute/path/experiment.zip ./bids ./derivatives/cnapfmriprep \
   --config config/my_study.yaml \
   --subject 001 --session 01 \
   --work-dir work/sub001-ses01

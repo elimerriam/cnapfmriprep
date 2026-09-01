@@ -6,8 +6,8 @@ from pathlib import Path
 
 import nibabel as nb
 
-from seventprep.config import load_config
-from seventprep.preprocess import preprocess_dataset
+from cnapfmriprep.config import load_config
+from cnapfmriprep.preprocess import preprocess_dataset
 
 
 def _write_executable(path: Path, text: str) -> None:
@@ -62,7 +62,7 @@ import os, shutil, sys
 from pathlib import Path
 import nibabel as nb
 import numpy as np
-counter = Path(os.environ['SEVENTPREP_TEST_TOPUP_COUNTER'])
+counter = Path(os.environ['CNAPFMRIPREP_TEST_TOPUP_COUNTER'])
 count = int(counter.read_text()) if counter.exists() else 0
 counter.write_text(str(count + 1))
 args = {{item.split('=', 1)[0]: item.split('=', 1)[1] for item in sys.argv[1:] if '=' in item}}
@@ -130,7 +130,7 @@ shutil.copy2(moving, warped)
     monkeypatch.setenv("FSLDIR", str(fsldir))
     monkeypatch.setenv("MPLCONFIGDIR", str(tmp_path / "matplotlib-cache"))
     monkeypatch.setenv("PYDRA_HASH_CACHE", str(tmp_path / "pydra-hash-cache"))
-    monkeypatch.setenv("SEVENTPREP_TEST_TOPUP_COUNTER", str(topup_counter))
+    monkeypatch.setenv("CNAPFMRIPREP_TEST_TOPUP_COUNTER", str(topup_counter))
 
     root = Path(__file__).parents[1]
     config = load_config(root / "config" / "example_study.yaml")

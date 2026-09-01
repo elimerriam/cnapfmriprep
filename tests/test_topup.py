@@ -1,7 +1,7 @@
 import pytest
 
-from seventprep.errors import ValidationError
-from seventprep.topup import phase_encoding_vector
+from cnapfmriprep.errors import ValidationError
+from cnapfmriprep.topup import phase_encoding_vector
 
 
 @pytest.mark.parametrize(

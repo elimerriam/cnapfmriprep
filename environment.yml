@@ -1,4 +1,4 @@
-name: seventprep
+name: cnapfmriprep
 channels:
   - conda-forge
 dependencies:

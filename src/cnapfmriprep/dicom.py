@@ -61,7 +61,7 @@ def validated_dicom_fields() -> tuple[str, ...]:
     invalid = [keyword for keyword in _DICOM_FIELDS if tag_for_keyword(keyword) is None]
     if invalid:
         raise ValidationError(
-            "SevenTPrep has invalid internal pydicom keyword(s): "
+            "CNAP fMRI Prep has invalid internal pydicom keyword(s): "
             + ", ".join(sorted(invalid))
         )
     return _DICOM_FIELDS

@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import cloudpickle
 import pytest
 
-from seventprep.cache import recover_interrupted_pydra_cache
-from seventprep.errors import ValidationError
+from cnapfmriprep.cache import recover_interrupted_pydra_cache
+from cnapfmriprep.errors import ValidationError
 
 
 def _write_result(entry: Path, *, output: object, errored: bool = False) -> None:

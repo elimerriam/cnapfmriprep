@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 def test_required_source_modules_are_present() -> None:
-    package = Path(__file__).parents[1] / "src" / "seventprep"
+    package = Path(__file__).parents[1] / "src" / "cnapfmriprep"
     required = {
         "archive.py",
         "bids.py",

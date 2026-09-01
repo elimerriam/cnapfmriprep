@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from seventprep.archive import safe_extract_archive, safe_extract_tgz
-from seventprep.errors import ValidationError
+from cnapfmriprep.archive import safe_extract_archive, safe_extract_tgz
+from cnapfmriprep.errors import ValidationError
 
 _MEMBER = "XNAT/scans/1/resources/DICOM/files/a.dcm"
 

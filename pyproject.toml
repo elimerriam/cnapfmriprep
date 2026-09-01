@@ -3,8 +3,8 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "seventprep"
-version = "0.3.0"
+name = "cnapfmriprep"
+version = "0.3.1"
 description = "Pydra pipeline for multi-run high-resolution 7T fMRI: XNAT DICOM to BIDS, magnitude-only NORDIC, shared TOPUP, shared-reference ANTs motion correction, and QC"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
@@ -42,14 +42,16 @@ test = [
 ]
 
 [project.scripts]
-seventprep = "seventprep.cli:main"
+cnapfmriprep = "cnapfmriprep.cli:main"
+# Transitional compatibility alias for scripts written before the rename.
+seventprep = "cnapfmriprep.cli:main"
 
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-seventprep = ["matlab/*.m"]
+cnapfmriprep = ["matlab/*.m"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

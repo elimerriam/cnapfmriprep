@@ -219,10 +219,10 @@ def run_qc_stage(
     )
     report = root / "report.html"
     report.write_text(
-        "<!doctype html><html><head><meta charset='utf-8'><title>seventprep QC</title>"
+        "<!doctype html><html><head><meta charset='utf-8'><title>cnapfmriprep QC</title>"
         "<style>body{font-family:system-ui,sans-serif;max-width:1200px;margin:2rem auto;padding:0 1rem}"
         "img{max-width:100%;border:1px solid #ccc}pre{white-space:pre-wrap;background:#f4f4f4;padding:1rem}"
-        "section{margin:2rem 0}</style></head><body><h1>seventprep run QC</h1>"
+        "section{margin:2rem 0}</style></head><body><h1>cnapfmriprep run QC</h1>"
         f"<p>Functional volumes: {summary['functional_volumes']}</p>"
         f"<p>Maximum Power FD: {summary['maximum_power_fd_mm']:.4g} mm</p>"
         f"<p>Maximum slab displacement: {summary['maximum_absolute_displacement_mm']:.4g} mm</p>"

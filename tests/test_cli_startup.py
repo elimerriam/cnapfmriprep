@@ -23,9 +23,9 @@ def test_cli_import_is_lazy() -> None:
         sys.executable,
         "-c",
         (
-            "import sys; import seventprep.cli; "
-            "assert 'seventprep.preprocess' not in sys.modules; "
-            "assert 'seventprep.pydra_workflows' not in sys.modules"
+            "import sys; import cnapfmriprep.cli; "
+            "assert 'cnapfmriprep.preprocess' not in sys.modules; "
+            "assert 'cnapfmriprep.pydra_workflows' not in sys.modules"
         ),
     ]
     subprocess.run(command, check=True, env=_environment())
@@ -33,10 +33,10 @@ def test_cli_import_is_lazy() -> None:
 
 def test_version_starts_without_preprocessing_imports() -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "seventprep.cli", "version"],
+        [sys.executable, "-m", "cnapfmriprep.cli", "version"],
         check=True,
         env=_environment(),
         capture_output=True,
         text=True,
     )
-    assert result.stdout.strip() == "0.3.0"
+    assert result.stdout.strip() == "0.3.1"

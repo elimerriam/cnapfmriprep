@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from seventprep.errors import ValidationError
-from seventprep.preprocess import _select_reference_run, _validate_shared_inputs
+from cnapfmriprep.errors import ValidationError
+from cnapfmriprep.preprocess import _select_reference_run, _validate_shared_inputs
 
 
 def _record(

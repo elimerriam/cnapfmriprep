@@ -400,7 +400,7 @@ def ingest_archive(
             "Name": config.ingest.dataset_name,
             "BIDSVersion": "1.10.1",
             "DatasetType": "raw",
-            "GeneratedBy": [{"Name": "seventprep", "Description": "DICOM-to-BIDS staging"}],
+            "GeneratedBy": [{"Name": "cnapfmriprep", "Description": "DICOM-to-BIDS staging"}],
         },
     )
     products = _convert_plan_to_bids(

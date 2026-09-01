@@ -5,7 +5,7 @@ from pathlib import Path
 import nibabel as nb
 import numpy as np
 
-import seventprep.nordic as nordic
+import cnapfmriprep.nordic as nordic
 
 
 def test_concatenate_and_explicit_trim(tmp_path: Path, monkeypatch) -> None:

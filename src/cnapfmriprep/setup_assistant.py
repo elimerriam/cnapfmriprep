@@ -224,7 +224,7 @@ def build_generated_config(
     generated = dict(template)
     ingest = dict(generated.get("ingest") or {})
     ingest["dataset_name"] = str(payload.get("dataset_name", "")).strip() or str(
-        ingest.get("dataset_name", "SevenTPrep study")
+        ingest.get("dataset_name", "CNAP fMRI Prep study")
     )
     ingest["series_rules"] = rules
     generated["ingest"] = ingest
@@ -263,7 +263,7 @@ def write_generated_config(
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = target.with_name(f".{target.name}.tmp")
     temporary.write_text(
-        "# Generated locally by `seventprep setup`. Review before ingestion.\n"
+        "# Generated locally by `cnapfmriprep setup`. Review before ingestion.\n"
         + yaml.safe_dump(generated, sort_keys=False)
     )
     temporary.replace(target)
@@ -303,7 +303,7 @@ def render_setup_page(rows: list[dict[str, Any]], token: str) -> str:
         )
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>SevenTPrep session setup</title>
+<title>CNAP fMRI Prep session setup</title>
 <style>
 body{{font:15px system-ui,sans-serif;margin:2rem;color:#17202a;background:#f6f8fa}}
 main{{max-width:1500px;margin:auto;background:white;padding:1.5rem;border-radius:12px;box-shadow:0 2px 14px #0002}}
@@ -313,10 +313,10 @@ table{{border-collapse:collapse;width:100%;margin:1.5rem 0}} th,td{{border:1px s
 th{{background:#eef2f5;position:sticky;top:0}} .scroll{{max-height:58vh;overflow:auto}}
 .confirm{{display:block;margin:1rem 0}} button{{padding:.7rem 1rem;font-weight:700}} #status{{margin-left:1rem}}
 </style></head><body><main>
-<h1>SevenTPrep session setup</h1>
+<h1>CNAP fMRI Prep session setup</h1>
 <p>This page is served only from your Mac. Review every suggested role; no metadata leaves this computer.</p>
 <div class="grid">
-<label>Dataset name<input id="dataset" value="SevenTPrep study"></label>
+<label>Dataset name<input id="dataset" value="CNAP fMRI Prep study"></label>
 <label>BIDS task<input id="task" value="retinotopy" pattern="[A-Za-z0-9]+"></label>
 <label>BIDS acquisition<input id="acquisition" value="hires7T" pattern="[A-Za-z0-9]+"></label>
 <label>Shared field identifier<input id="b0" value="pepolar_session01" pattern="[A-Za-z0-9_-]+"></label>
@@ -422,7 +422,7 @@ def run_setup_server(
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     url = f"http://127.0.0.1:{server.server_port}/?token={token}"
-    print(f"SevenTPrep setup is available locally at:\n{url}\n")
+    print(f"CNAP fMRI Prep setup is available locally at:\n{url}\n")
     if open_browser:
         webbrowser.open(url)
     try:

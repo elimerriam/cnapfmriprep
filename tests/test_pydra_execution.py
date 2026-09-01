@@ -14,8 +14,8 @@ def test_concurrent_futures_submitter_executes_dict_output(
     workflow = Workflow(
         name="pydra_smoke",
         cache_dir=str(tmp_path / "cache"),
-        input_spec=["seventprep_context"],
-        seventprep_context="pydra_smoke",
+        input_spec=["cnapfmriprep_context"],
+        cnapfmriprep_context="pydra_smoke",
     )
     workflow.add(_dict_task(name="increment", value=4))
     workflow.set_output([("result", workflow.increment.lzout.out)])

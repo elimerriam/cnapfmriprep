@@ -1,7 +1,7 @@
 function run_nordic_job(job_json)
 %RUN_NORDIC_JOB Execute magnitude-only NIFTI_NORDIC from a JSON job file.
 %
-% NORDIC itself is intentionally not distributed with seventprep. The job
+% NORDIC itself is intentionally not distributed with cnapfmriprep. The job
 % must point at an authorized local checkout containing NIFTI_NORDIC.m.
 
 job = jsondecode(fileread(job_json));

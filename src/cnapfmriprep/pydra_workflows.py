@@ -18,8 +18,8 @@ def _new_workflow(*, name: str, cache_dir: str | Path) -> Workflow:
     return Workflow(
         name=name,
         cache_dir=str(Path(cache_dir).resolve()),
-        input_spec=["seventprep_context"],
-        seventprep_context=name,
+        input_spec=["cnapfmriprep_context"],
+        cnapfmriprep_context=name,
     )
 
 
@@ -418,7 +418,7 @@ def _run_workflow(workflow: Workflow, *, plugin: str, n_procs: int) -> Any:
     if result is None or getattr(result, "output", None) is None:
         raise WorkflowError(
             "Pydra returned an empty workflow result. This commonly follows an interrupted "
-            "task. Restart with the same work directory; SevenTPrep will quarantine invalid "
+            "task. Restart with the same work directory; CNAP fMRI Prep will quarantine invalid "
             "cache records and preserve completed tasks."
         )
     return result.output

@@ -7,7 +7,7 @@ import nibabel as nb
 import numpy as np
 import pandas as pd
 
-from seventprep.qc import run_qc_stage
+from cnapfmriprep.qc import run_qc_stage
 
 
 def test_qc_report_is_created(tmp_path: Path) -> None:

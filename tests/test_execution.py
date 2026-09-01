@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from seventprep.config import load_config
-from seventprep.execution import (
+from cnapfmriprep.config import load_config
+from cnapfmriprep.execution import (
     apply_execution_profile,
     choose_auto_profile,
     resolve_execution_mapping,

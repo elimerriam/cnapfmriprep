@@ -45,12 +45,12 @@ def _dataset_description(root: Path, version: str) -> Path:
         write_json(
             path,
             {
-                "Name": "seventprep native-resolution fMRI derivatives",
+                "Name": "cnapfmriprep native-resolution fMRI derivatives",
                 "BIDSVersion": "1.10.1",
                 "DatasetType": "derivative",
                 "GeneratedBy": [
                     {
-                        "Name": "seventprep",
+                        "Name": "cnapfmriprep",
                         "Version": version,
                         "Description": (
                             "Magnitude-only NORDIC followed by TOPUP/ANTs susceptibility "
@@ -136,7 +136,7 @@ def publish_run_derivatives(
             ),
             "MotionReferenceMode": motion_outputs.get("reference_mode"),
             "MotionReferenceSource": motion_outputs.get("reference_source_bold"),
-            "PipelineName": "seventprep",
+            "PipelineName": "cnapfmriprep",
             "PipelineVersion": pipeline_version,
             "Interpolation": resolved_config["resampling"]["interpolation"],
             "JacobianModulation": resolved_config["resampling"]["jacobian_modulation"],
@@ -145,7 +145,7 @@ def publish_run_derivatives(
     )
     write_json(sidecar_for(Path(outputs["corrected_bold"])), metadata)
     provenance = {
-        "pipeline": {"name": "seventprep", "version": pipeline_version},
+        "pipeline": {"name": "cnapfmriprep", "version": pipeline_version},
         "source_bold": str(source),
         "resolved_config": resolved_config,
         "nordic": nordic_outputs,

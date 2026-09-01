@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from seventprep.config import load_config
-from seventprep.errors import ValidationError
-from seventprep.setup_assistant import build_generated_config, suggest_role, write_generated_config
+from cnapfmriprep.config import load_config
+from cnapfmriprep.errors import ValidationError
+from cnapfmriprep.setup_assistant import build_generated_config, suggest_role, write_generated_config
 
 
 def _row(uid: str, number: int, description: str, files: int) -> dict[str, str | int]:

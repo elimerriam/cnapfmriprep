@@ -1,8 +1,8 @@
 import pytest
 
-from seventprep.config import SeriesRule
-from seventprep.dicom import match_series
-from seventprep.errors import ValidationError
+from cnapfmriprep.config import SeriesRule
+from cnapfmriprep.dicom import match_series
+from cnapfmriprep.errors import ValidationError
 
 
 def _row(uid: str, number: int, description: str) -> dict:

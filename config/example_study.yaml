@@ -1,5 +1,5 @@
 # Copy this file and edit the SeriesDescription/ProtocolName expressions after
-# running `seventprep inventory`. Expressions are Python regular expressions;
+# running `cnapfmriprep inventory`. Expressions are Python regular expressions;
 # all fields within one rule must match the same DICOM series.
 ingest:
   dataset_name: "Example 7T high-resolution fMRI study"

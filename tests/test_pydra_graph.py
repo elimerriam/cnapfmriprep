@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from seventprep.config import load_config
-from seventprep.pydra_workflows import build_run_workflow, build_session_workflow
+from cnapfmriprep.config import load_config
+from cnapfmriprep.pydra_workflows import build_run_workflow, build_session_workflow
 
 
 def test_graph_builds(tmp_path: Path) -> None:

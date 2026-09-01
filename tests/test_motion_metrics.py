@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from nitransforms.io.itk import ITKLinearTransform
 
-from seventprep.motion import write_motion_metrics
+from cnapfmriprep.motion import write_motion_metrics
 
 
 def test_motion_metrics_have_one_row_per_volume(tmp_path: Path) -> None:

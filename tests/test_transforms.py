@@ -8,11 +8,11 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
-from seventprep.transforms import (
+from cnapfmriprep.transforms import (
     displacement_to_fieldmap,
     fieldmap_to_itk_displacement,
 )
-from seventprep.utils import run_command
+from cnapfmriprep.utils import run_command
 
 
 @pytest.mark.parametrize("pe_dir", ["i", "i-", "j", "j-", "k", "k-"])

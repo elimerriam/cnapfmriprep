@@ -1,4 +1,4 @@
-from seventprep.bids import discover_bold_runs, semantic_validate
+from cnapfmriprep.bids import discover_bold_runs, semantic_validate
 
 
 def test_semantic_validation_and_discovery(synthetic_bids) -> None:

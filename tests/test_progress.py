@@ -2,7 +2,7 @@ import io
 import json
 from pathlib import Path
 
-from seventprep.progress import (
+from cnapfmriprep.progress import (
     ProgressPrinter,
     emit_progress,
     format_progress_event,
