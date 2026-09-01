@@ -1,0 +1,6 @@
+include README.md QUICKSTART.md TEST_REPORT.md MIGRATION_0.2.0.md HOTFIX_0.2.1.md
+include RELEASE_0.3.0.md LICENSE NOTICE environment.yml
+recursive-include config *.yaml
+recursive-include scripts *
+recursive-include tests *.py
+recursive-include src/seventprep/matlab *.m

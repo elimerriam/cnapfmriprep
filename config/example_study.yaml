@@ -1,0 +1,110 @@
+# Copy this file and edit the SeriesDescription/ProtocolName expressions after
+# running `seventprep inventory`. Expressions are Python regular expressions;
+# all fields within one rule must match the same DICOM series.
+ingest:
+  dataset_name: "Example 7T high-resolution fMRI study"
+  trailing_no_rf_volumes: 2
+  # The official BIDS noRF suffix is normally placed in fmap. Set to func only
+  # if the validator version used by your institution requires that layout.
+  no_rf_datatype: fmap
+  dcm2niix_compression: y
+  retain_extracted_dicoms: false
+  series_rules:
+    # One rule can match every magnitude BOLD run. The matched series are sorted
+    # by DICOM SeriesNumber and receive run-01, run-02, ... automatically.
+    - name: retinotopy_magnitude_runs
+      kind: bold_with_norf
+      match:
+        SeriesDescription: "(?i)EDIT_ME_PHRASE_SHARED_BY_ALL_BOLD_RUNS"
+        # ProtocolName: "(?i)retinotopy"
+        # ImageType: "(?i)(M|MAGNITUDE)"
+      task: retinotopy
+      acquisition: hires7T
+      run: auto
+      run_start: 1
+      run_sort_by: SeriesNumber
+      # Use the same identifier on every BOLD run and on the one AP/PA pair.
+      b0_identifier: pepolar_session01
+      # Use only when dcm2niix omits PhaseEncodingDirection for a custom EPI
+      # sequence. Valid BIDS values are i, i-, j, j-, k, and k-.
+      # phase_encoding_direction: j-
+      # Use an exact integer (for example 10) when the count is fixed, or this
+      # value when the number of runs can vary between sessions.
+      expected_matches: one_or_more
+
+    - name: reverse_pe_ap_session01
+      kind: fmap_epi
+      match:
+        SeriesDescription: "(?i)^EDIT_ME_REVERSE_PE_AP$"
+      acquisition: bold
+      direction: AP
+      b0_identifier: pepolar_session01
+      # phase_encoding_direction: j-
+      expected_matches: 1
+
+    - name: reverse_pe_pa_session01
+      kind: fmap_epi
+      match:
+        SeriesDescription: "(?i)^EDIT_ME_REVERSE_PE_PA$"
+      acquisition: bold
+      direction: PA
+      b0_identifier: pepolar_session01
+      # phase_encoding_direction: j
+      expected_matches: 1
+
+nordic:
+  # NORDIC_Raw is not redistributed. Point this to your authorized checkout.
+  checkout: /ABSOLUTE/PATH/TO/NORDIC_Raw
+  matlab_command: matlab
+  magnitude_only: true
+  # Compatibility with the linked magnitude-only procedure: this selects the
+  # penultimate appended volume as the measured-noise image.
+  noise_volume_last: 2
+  factor_error: 1.0
+  save_gfactor_map: true
+  save_additional_info: true
+
+topup:
+  volumes_per_direction: 1
+  # auto selects b02b0_4.cnf, b02b0_2.cnf, or b02b0_1.cnf from image dimensions.
+  config: auto
+  # Leave null when dcm2niix writes TotalReadoutTime. Otherwise provide seconds.
+  fallback_total_readout_time: null
+
+ants:
+  # Two passes are used to create the robust reference from the reference run.
+  # Other runs are registered directly to that fixed shared reference.
+  two_pass: true
+  metric: Mattes
+  sampling_percentage: 0.2
+  preview_interpolation: Linear
+  use_registration_mask: true
+  seed: 20260829
+  fd_radius_mm: 50.0
+
+multi_run:
+  # Estimate TOPUP once and feed the same field estimate to every BOLD run.
+  shared_topup: true
+  # Build one robust reference from the selected run and use it for all runs.
+  shared_motion_reference: true
+  # null/null means the first selected run in BIDS order. Set both fields to select an
+  # explicit reference, for example task retinotopy and run 1.
+  reference_task: retinotopy
+  reference_run: 1
+
+resampling:
+  interpolation: LanczosWindowedSinc
+  allow_negative_values: false
+  # This release calculates and reports the SDC Jacobian but does not apply it.
+  jacobian_modulation: false
+  maximum_transform_order_nrmse: 0.25
+
+qc:
+  enabled: true
+
+execution:
+  # laptop is intentionally sequential. Choose workstation, server, or auto on
+  # a machine with more RAM and sufficient simultaneous MATLAB licenses.
+  profile: laptop
+  show_progress: true
+  progress_interval_percent: 10

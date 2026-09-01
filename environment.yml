@@ -1,0 +1,20 @@
+name: seventprep
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - dcm2niix
+  - numpy<2.3
+  - scipy
+  - nibabel
+  - pandas
+  - matplotlib
+  - pydicom
+  - pydantic>=2
+  - pyyaml
+  - h5py
+  - pip:
+      - -e .[test]
+# FSL TOPUP, ANTs command-line tools, MATLAB, the official BIDS validator,
+# and an authorized NORDIC_Raw checkout are external requirements. See README.md.

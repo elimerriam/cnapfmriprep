@@ -1,0 +1,8 @@
+seventprep 0.2.1
+
+The fieldmap-Hz to ITK displacement convention and associated synthetic tests
+are informed by SDCFlows, Copyright 2021 The NiPreps Developers, distributed
+under the Apache License 2.0. No SDCFlows source file is bundled verbatim.
+
+NORDIC_Raw is not included. Users must obtain and use it under its own license
+and provide an authorized local checkout.
