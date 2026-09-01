@@ -128,7 +128,6 @@ cd cnapfmriprep
 
 conda env create -f environment.yml
 conda activate cnapfmriprep
-python -m pip install -e .
 
 cnapfmriprep version
 cnapfmriprep doctor
