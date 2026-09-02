@@ -7,8 +7,9 @@ import os
 import shlex
 import shutil
 import subprocess
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import nibabel as nb
 import numpy as np
@@ -75,8 +76,7 @@ def run_command(
         cwd=str(Path(cwd).resolve()) if cwd is not None else None,
         env=dict(os.environ) | (dict(env) if env is not None else {}),
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if log_file is not None:

@@ -15,7 +15,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any
 
 import typer
 
@@ -165,7 +165,9 @@ def doctor_command() -> None:
 
 @app.command("check-deps")
 def check_dependencies(
-    config_file: Path = typer.Option(..., "--config", exists=True, readable=True),
+    config_file: Annotated[
+        Path, typer.Option("--config", exists=True, readable=True)
+    ],
 ) -> None:
     """Check external programs and the configured NORDIC checkout."""
     load_config = _load_attr("config", "load_config")
@@ -220,7 +222,9 @@ def profiles_command() -> None:
 
 @app.command("recover-cache")
 def recover_cache_command(
-    work_dir: Path = typer.Option(..., "--work-dir", exists=True, file_okay=False),
+    work_dir: Annotated[
+        Path, typer.Option("--work-dir", exists=True, file_okay=False)
+    ],
 ) -> None:
     """Quarantine interrupted empty Pydra results while preserving valid tasks."""
     recover = _load_attr("cache", "recover_interrupted_pydra_cache")
@@ -230,9 +234,11 @@ def recover_cache_command(
 
 @app.command("inventory")
 def inventory_command(
-    archive: Path = typer.Argument(..., exists=True, readable=True),
-    output_dir: Path = typer.Option(..., "--output-dir"),
-    config_file: Optional[Path] = typer.Option(None, "--config", exists=True, readable=True),
+    archive: Annotated[Path, typer.Argument(exists=True, readable=True)],
+    output_dir: Annotated[Path, typer.Option("--output-dir")],
+    config_file: Annotated[
+        Path | None, typer.Option("--config", exists=True, readable=True)
+    ] = None,
 ) -> None:
     """Safely extract and inventory an XNAT ZIP or tar archive; optionally test series rules."""
     load_config = _load_attr("config", "load_config")
@@ -244,13 +250,15 @@ def inventory_command(
 
 @app.command("setup")
 def setup_command(
-    archive: Optional[Path] = typer.Argument(None),
-    inventory_tsv: Optional[Path] = typer.Option(None, "--inventory"),
-    template_file: Path = typer.Option(..., "--template", exists=True, readable=True),
-    output_file: Path = typer.Option(..., "--output"),
-    work_dir: Path = typer.Option(Path("work/setup"), "--work-dir"),
-    overwrite: bool = typer.Option(False, "--overwrite"),
-    no_browser: bool = typer.Option(False, "--no-browser"),
+    template_file: Annotated[
+        Path, typer.Option("--template", exists=True, readable=True)
+    ],
+    output_file: Annotated[Path, typer.Option("--output")],
+    archive: Annotated[Path | None, typer.Argument()] = None,
+    inventory_tsv: Annotated[Path | None, typer.Option("--inventory")] = None,
+    work_dir: Annotated[Path, typer.Option("--work-dir")] = Path("work/setup"),
+    overwrite: Annotated[bool, typer.Option("--overwrite")] = False,
+    no_browser: Annotated[bool, typer.Option("--no-browser")] = False,
 ) -> None:
     """Open a local browser assistant that generates a session study YAML."""
     if (archive is None) == (inventory_tsv is None):
@@ -290,14 +298,18 @@ def setup_command(
 
 @app.command("ingest")
 def ingest_command(
-    archive: Path = typer.Argument(..., exists=True, readable=True),
-    bids_dir: Path = typer.Argument(...),
-    config_file: Path = typer.Option(..., "--config", exists=True, readable=True),
-    subject: str = typer.Option(..., "--subject"),
-    session: Optional[str] = typer.Option(None, "--session"),
-    work_dir: Path = typer.Option(..., "--work-dir"),
-    skip_official_validator: bool = typer.Option(False, "--skip-official-validator"),
-    overwrite: bool = typer.Option(False, "--overwrite"),
+    archive: Annotated[Path, typer.Argument(exists=True, readable=True)],
+    bids_dir: Annotated[Path, typer.Argument()],
+    config_file: Annotated[
+        Path, typer.Option("--config", exists=True, readable=True)
+    ],
+    subject: Annotated[str, typer.Option("--subject")],
+    work_dir: Annotated[Path, typer.Option("--work-dir")],
+    session: Annotated[str | None, typer.Option("--session")] = None,
+    skip_official_validator: Annotated[
+        bool, typer.Option("--skip-official-validator")
+    ] = False,
+    overwrite: Annotated[bool, typer.Option("--overwrite")] = False,
 ) -> None:
     """Convert one archive into staged BIDS, validate it, then publish it."""
     load_config = _load_attr("config", "load_config")
@@ -319,11 +331,15 @@ def ingest_command(
 
 @app.command("validate")
 def validate_command(
-    bids_dir: Path = typer.Argument(..., exists=True, file_okay=False),
-    subject: Optional[str] = typer.Option(None, "--subject"),
-    session: Optional[str] = typer.Option(None, "--session"),
-    expected_no_rf_volumes: int = typer.Option(2, "--expected-no-rf-volumes"),
-    skip_official_validator: bool = typer.Option(False, "--skip-official-validator"),
+    bids_dir: Annotated[Path, typer.Argument(exists=True, file_okay=False)],
+    subject: Annotated[str | None, typer.Option("--subject")] = None,
+    session: Annotated[str | None, typer.Option("--session")] = None,
+    expected_no_rf_volumes: Annotated[
+        int, typer.Option("--expected-no-rf-volumes")
+    ] = 2,
+    skip_official_validator: Annotated[
+        bool, typer.Option("--skip-official-validator")
+    ] = False,
 ) -> None:
     """Run the official validator and cnapfmriprep semantic checks."""
     run_official_validator = _load_attr("bids", "run_official_validator")
@@ -346,15 +362,19 @@ def validate_command(
 
 @app.command("preprocess")
 def preprocess_command(
-    bids_dir: Path = typer.Argument(..., exists=True, file_okay=False),
-    derivatives_dir: Path = typer.Argument(...),
-    config_file: Path = typer.Option(..., "--config", exists=True, readable=True),
-    subject: str = typer.Option(..., "--subject"),
-    session: Optional[str] = typer.Option(None, "--session"),
-    work_dir: Path = typer.Option(..., "--work-dir"),
-    task: Optional[str] = typer.Option(None, "--task"),
-    run: Optional[int] = typer.Option(None, "--run", min=1),
-    execution_profile: Optional[str] = typer.Option(None, "--execution-profile"),
+    bids_dir: Annotated[Path, typer.Argument(exists=True, file_okay=False)],
+    derivatives_dir: Annotated[Path, typer.Argument()],
+    config_file: Annotated[
+        Path, typer.Option("--config", exists=True, readable=True)
+    ],
+    subject: Annotated[str, typer.Option("--subject")],
+    work_dir: Annotated[Path, typer.Option("--work-dir")],
+    session: Annotated[str | None, typer.Option("--session")] = None,
+    task: Annotated[str | None, typer.Option("--task")] = None,
+    run: Annotated[int | None, typer.Option("--run", min=1)] = None,
+    execution_profile: Annotated[
+        str | None, typer.Option("--execution-profile")
+    ] = None,
 ) -> None:
     """Run per-run NORDIC, shared TOPUP/reference motion, resampling, and QC."""
     load_config = _load_attr("config", "load_config")
@@ -379,16 +399,22 @@ def preprocess_command(
 
 @app.command("run")
 def run_command_cli(
-    archive: Path = typer.Argument(..., exists=True, readable=True),
-    bids_dir: Path = typer.Argument(...),
-    derivatives_dir: Path = typer.Argument(...),
-    config_file: Path = typer.Option(..., "--config", exists=True, readable=True),
-    subject: str = typer.Option(..., "--subject"),
-    session: Optional[str] = typer.Option(None, "--session"),
-    work_dir: Path = typer.Option(..., "--work-dir"),
-    skip_official_validator: bool = typer.Option(False, "--skip-official-validator"),
-    overwrite: bool = typer.Option(False, "--overwrite"),
-    execution_profile: Optional[str] = typer.Option(None, "--execution-profile"),
+    archive: Annotated[Path, typer.Argument(exists=True, readable=True)],
+    bids_dir: Annotated[Path, typer.Argument()],
+    derivatives_dir: Annotated[Path, typer.Argument()],
+    config_file: Annotated[
+        Path, typer.Option("--config", exists=True, readable=True)
+    ],
+    subject: Annotated[str, typer.Option("--subject")],
+    work_dir: Annotated[Path, typer.Option("--work-dir")],
+    session: Annotated[str | None, typer.Option("--session")] = None,
+    skip_official_validator: Annotated[
+        bool, typer.Option("--skip-official-validator")
+    ] = False,
+    overwrite: Annotated[bool, typer.Option("--overwrite")] = False,
+    execution_profile: Annotated[
+        str | None, typer.Option("--execution-profile")
+    ] = None,
 ) -> None:
     """Ingest one XNAT archive, then preprocess all BOLD runs as one session graph."""
     load_config = _load_attr("config", "load_config")

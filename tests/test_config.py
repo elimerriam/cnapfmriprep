@@ -9,6 +9,7 @@ def test_example_config_loads() -> None:
     root = Path(__file__).parents[1]
     config = load_config(root / "config" / "example_study.yaml")
     assert config.ingest.trailing_no_rf_volumes == 2
+    assert config.ingest.no_rf_datatype == "func"
     assert config.nordic.magnitude_only is True
     assert config.nordic.noise_volume_last == 2
     assert config.resampling.jacobian_modulation is False
@@ -23,6 +24,9 @@ def test_example_config_loads() -> None:
     assert config.execution.resolved_profile == "laptop"
     assert config.execution.pydra_plugin == "serial"
     assert config.execution.volume_workers == 1
+
+    config.ingest.no_rf_datatype = "fmap"
+    assert config.ingest.no_rf_datatype == "func"
 
 
 def test_phase_encoding_direction_override_is_validated() -> None:

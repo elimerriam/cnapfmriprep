@@ -6,8 +6,9 @@ import json
 import re
 import shutil
 import subprocess
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import nibabel as nb
 
@@ -318,8 +319,7 @@ def run_official_validator(
     completed = subprocess.run(
         [executable, "--json", str(root)],
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     try:

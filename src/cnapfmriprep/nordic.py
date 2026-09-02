@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import shutil
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import nibabel as nb
 import numpy as np

@@ -62,7 +62,7 @@ class SeriesRule(_Model):
         return value
 
     @model_validator(mode="after")
-    def validate_kind_fields(self) -> "SeriesRule":
+    def validate_kind_fields(self) -> SeriesRule:
         if self.kind == "bold_with_norf":
             if not self.task:
                 raise ValueError("bold_with_norf rules require task")
@@ -102,13 +102,20 @@ class SeriesRule(_Model):
 class IngestConfig(_Model):
     dataset_name: str
     trailing_no_rf_volumes: int = Field(default=2, ge=1)
-    no_rf_datatype: Literal["fmap", "func"] = "fmap"
+    no_rf_datatype: Literal["func"] = "func"
     dcm2niix_compression: Literal["y", "n"] = "y"
     retain_extracted_dicoms: bool = False
     series_rules: list[SeriesRule]
 
+    @field_validator("no_rf_datatype", mode="before")
+    @classmethod
+    def migrate_legacy_no_rf_datatype(cls, value: Any) -> Any:
+        # BIDS 1.10 introduced BOLD no-RF scans under func. Accept the former
+        # cnapfmriprep value so existing study YAML migrates without breaking.
+        return "func" if value == "fmap" else value
+
     @model_validator(mode="after")
-    def unique_rule_names(self) -> "IngestConfig":
+    def unique_rule_names(self) -> IngestConfig:
         names = [rule.name for rule in self.series_rules]
         duplicates = sorted({name for name in names if names.count(name) > 1})
         if duplicates:
@@ -128,7 +135,7 @@ class NordicConfig(_Model):
     save_additional_info: bool = True
 
     @model_validator(mode="after")
-    def magnitude_only_required(self) -> "NordicConfig":
+    def magnitude_only_required(self) -> NordicConfig:
         if not self.magnitude_only:
             raise ValueError("This pipeline release supports magnitude-only NORDIC")
         return self
@@ -192,7 +199,7 @@ class StudyConfig(_Model):
     execution: ExecutionConfig
 
     @model_validator(mode="after")
-    def validate_noise_index(self) -> "StudyConfig":
+    def validate_noise_index(self) -> StudyConfig:
         if self.nordic.noise_volume_last > self.ingest.trailing_no_rf_volumes:
             raise ValueError(
                 "nordic.noise_volume_last cannot exceed ingest.trailing_no_rf_volumes"

@@ -213,7 +213,7 @@ class ProgressPrinter:
         self._thread.join(timeout=2)
         self._thread = None
 
-    def __enter__(self) -> "ProgressPrinter":
+    def __enter__(self) -> ProgressPrinter:
         self.start()
         return self
 

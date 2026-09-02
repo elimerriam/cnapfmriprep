@@ -4,7 +4,11 @@ import pytest
 
 from cnapfmriprep.config import load_config
 from cnapfmriprep.errors import ValidationError
-from cnapfmriprep.setup_assistant import build_generated_config, suggest_role, write_generated_config
+from cnapfmriprep.setup_assistant import (
+    build_generated_config,
+    suggest_role,
+    write_generated_config,
+)
 
 
 def _row(uid: str, number: int, description: str, files: int) -> dict[str, str | int]:

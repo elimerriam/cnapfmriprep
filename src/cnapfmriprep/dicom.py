@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 import pydicom
 from pydicom.datadict import tag_for_keyword
@@ -14,7 +15,6 @@ from pydicom.errors import InvalidDicomError
 
 from .config import SeriesRule
 from .errors import ValidationError
-
 
 # These are DICOM data-element keywords, not human-readable tag names. Keep
 # this list validated because pydicom resolves every item in ``specific_tags``

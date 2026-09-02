@@ -320,17 +320,21 @@ The BIDS dataset will contain, for example:
 sub-001/ses-01/func/
   sub-001_ses-01_task-retinotopy_acq-hires7T_run-01_bold.nii.gz
   sub-001_ses-01_task-retinotopy_acq-hires7T_run-02_bold.nii.gz
+  sub-001_ses-01_task-retinotopy_acq-hires7T_run-01_mod-bold_noRF.nii.gz
+  sub-001_ses-01_task-retinotopy_acq-hires7T_run-02_mod-bold_noRF.nii.gz
   ...
 
 sub-001/ses-01/fmap/
-  sub-001_ses-01_acq-hires7T_run-01_mod-bold_noRF.nii.gz
-  sub-001_ses-01_acq-hires7T_run-02_mod-bold_noRF.nii.gz
-  ...
   sub-001_ses-01_acq-bold_dir-AP_epi.nii.gz
   sub-001_ses-01_acq-bold_dir-PA_epi.nii.gz
 ```
 
 Each BOLD sidecar points to its own no-RF file and to the common B0 identifier.
+For custom 3D sequences where dcm2niix reports an inner excitation interval as
+`RepetitionTime`, ingestion detects a value shorter than the phase-encode readout
+and derives the volume TR from the partition count and
+`ParallelReductionFactorOutOfPlane`. The corrected value is also written to the
+NIfTI temporal pixel dimension.
 
 ## Preprocess all runs
 

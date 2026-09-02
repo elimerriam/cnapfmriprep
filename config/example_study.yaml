@@ -4,9 +4,8 @@
 ingest:
   dataset_name: "Example 7T high-resolution fMRI study"
   trailing_no_rf_volumes: 2
-  # The official BIDS noRF suffix is normally placed in fmap. Set to func only
-  # if the validator version used by your institution requires that layout.
-  no_rf_datatype: fmap
+  # BOLD no-RF scans use the BIDS func datatype and retain the task entity.
+  no_rf_datatype: func
   dcm2niix_compression: y
   retain_extracted_dicoms: false
   series_rules:

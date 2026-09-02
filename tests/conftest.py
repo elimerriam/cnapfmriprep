@@ -23,10 +23,18 @@ def synthetic_bids(tmp_path: Path) -> Path:
     rng = np.random.default_rng(42)
     bold = func / "sub-001_ses-01_task-demo_run-01_bold.nii.gz"
     nb.Nifti1Image(rng.normal(100, 5, size=(8, 9, 6, 7)).astype("float32"), affine).to_filename(bold)
-    noise = fmap / "sub-001_ses-01_acq-demo_run-01_mod-bold_noRF.nii.gz"
+    noise = func / "sub-001_ses-01_task-demo_acq-demo_run-01_mod-bold_noRF.nii.gz"
     nb.Nifti1Image(rng.normal(size=(8, 9, 6, 2)).astype("float32"), affine).to_filename(noise)
-    (fmap / "sub-001_ses-01_acq-demo_run-01_mod-bold_noRF.json").write_text(
-        json.dumps({"PhaseEncodingDirection": "j-", "TotalReadoutTime": 0.03})
+    sidecar = noise.with_name(noise.name[:-7] + ".json")
+    sidecar.write_text(
+        json.dumps(
+            {
+                "TaskName": "demo",
+                "RepetitionTime": 1.2,
+                "PhaseEncodingDirection": "j-",
+                "TotalReadoutTime": 0.03,
+            }
+        )
     )
     fieldmaps = []
     for label, pe in (("AP", "j-"), ("PA", "j")):
@@ -92,7 +100,10 @@ def synthetic_bids_multi_run(tmp_path: Path) -> Path:
 
     for run in range(1, 4):
         bold = func / f"sub-001_ses-01_task-demo_run-{run:02d}_bold.nii.gz"
-        noise = fmap / f"sub-001_ses-01_acq-demo_run-{run:02d}_mod-bold_noRF.nii.gz"
+        noise = (
+            func
+            / f"sub-001_ses-01_task-demo_acq-demo_run-{run:02d}_mod-bold_noRF.nii.gz"
+        )
         nb.Nifti1Image(
             rng.normal(100 + run, 5, size=(8, 9, 6, 7)).astype("float32"), affine
         ).to_filename(bold)
@@ -100,7 +111,14 @@ def synthetic_bids_multi_run(tmp_path: Path) -> Path:
             rng.normal(size=(8, 9, 6, 2)).astype("float32"), affine
         ).to_filename(noise)
         noise.with_name(noise.name[:-7] + ".json").write_text(
-            json.dumps({"PhaseEncodingDirection": "j-", "TotalReadoutTime": 0.03})
+            json.dumps(
+                {
+                    "TaskName": "demo",
+                    "RepetitionTime": 1.2,
+                    "PhaseEncodingDirection": "j-",
+                    "TotalReadoutTime": 0.03,
+                }
+            )
         )
         bold.with_name(bold.name[:-7] + ".json").write_text(
             json.dumps(

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import math
 import shutil
+from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, TypeVar
 
 import nibabel as nb
 import numpy as np
@@ -224,7 +225,7 @@ def _load_itk_affine_ras(path: Path) -> np.ndarray:
     try:
         from nitransforms.io.itk import ITKLinearTransform
         return np.asarray(ITKLinearTransform.from_filename(path).to_ras(), dtype=np.float64)
-    except Exception:
+    except Exception as error:
         text = path.read_text(errors="replace")
         parameters_line = next(
             (line for line in text.splitlines() if line.strip().startswith("Parameters:")), None
@@ -233,10 +234,10 @@ def _load_itk_affine_ras(path: Path) -> np.ndarray:
             (line for line in text.splitlines() if line.strip().startswith("FixedParameters:")), None
         )
         if parameters_line is None:
-            raise ValidationError(f"Could not parse ITK affine transform: {path}")
+            raise ValidationError(f"Could not parse ITK affine transform: {path}") from error
         values = np.fromstring(parameters_line.split(":", 1)[1], sep=" ")
         if values.size != 12:
-            raise ValidationError(f"Expected 12 affine parameters in {path}")
+            raise ValidationError(f"Expected 12 affine parameters in {path}") from error
         center = (
             np.fromstring(fixed_line.split(":", 1)[1], sep=" ")
             if fixed_line is not None else np.zeros(3)

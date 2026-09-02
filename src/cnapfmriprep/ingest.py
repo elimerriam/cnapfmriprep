@@ -7,8 +7,9 @@ import json
 import os
 import re
 import shutil
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import nibabel as nb
 import numpy as np
@@ -186,12 +187,80 @@ def _save_image(data: np.ndarray, source: nb.spatialimages.SpatialImage, path: P
     return path.resolve()
 
 
+def _correct_3d_volume_repetition_time(
+    metadata: dict[str, Any],
+    image: nb.spatialimages.SpatialImage,
+    *,
+    sidecar: Path,
+) -> float | None:
+    """Replace an inconsistent inner 3D TR with the completed-volume TR.
+
+    Some custom 3D sequences store the excitation repetition interval in the
+    DICOM RepetitionTime field. dcm2niix then writes that interval as the BIDS
+    volume RepetitionTime and as NIfTI pixdim[4]. Only correct it when it is
+    physically shorter than the phase-encode readout, the acquisition is 3D,
+    and the volume TR can be derived from the partition count and through-plane
+    acceleration.
+    """
+    if str(metadata.get("MRAcquisitionType", "")).upper() != "3D":
+        return None
+    try:
+        reported = float(metadata["RepetitionTime"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not np.isfinite(reported) or reported <= 0:
+        return None
+
+    minimum_readout = 0.0
+    try:
+        minimum_readout = float(metadata.get("TotalReadoutTime", 0))
+    except (TypeError, ValueError):
+        pass
+    try:
+        direction = str(metadata["PhaseEncodingDirection"])
+        axis = {"i": 0, "j": 1, "k": 2}[direction[0]]
+        echo_spacing = float(metadata["EffectiveEchoSpacing"])
+        minimum_readout = max(minimum_readout, echo_spacing * int(image.shape[axis]))
+    except (KeyError, IndexError, TypeError, ValueError):
+        pass
+    if minimum_readout <= 0 or reported >= minimum_readout:
+        return None
+
+    try:
+        acceleration = float(metadata.get("ParallelReductionFactorOutOfPlane", 1))
+    except (TypeError, ValueError) as error:
+        raise ValidationError(
+            f"Invalid ParallelReductionFactorOutOfPlane in {sidecar}"
+        ) from error
+    if not np.isfinite(acceleration) or acceleration <= 0:
+        raise ValidationError(
+            f"ParallelReductionFactorOutOfPlane must be positive in {sidecar}"
+        )
+
+    partition_count = int(image.shape[2])
+    volume_repetition_time = round(reported * partition_count / acceleration, 9)
+    if volume_repetition_time < minimum_readout:
+        raise ValidationError(
+            "Derived 3D volume RepetitionTime remains shorter than its phase-encode "
+            f"readout in {sidecar}: {volume_repetition_time} < {minimum_readout} seconds"
+        )
+
+    metadata["RepetitionTime"] = volume_repetition_time
+    if len(image.shape) >= 4:
+        zooms = list(image.header.get_zooms())
+        zooms[3] = volume_repetition_time
+        image.header.set_zooms(zooms)
+    return volume_repetition_time
+
+
 def _split_bold_and_noise(
     converted: Path,
     bold_target: Path,
     noise_target: Path,
     *,
     noise_volumes: int,
+    metadata: dict[str, Any],
+    sidecar: Path,
 ) -> tuple[Path, Path]:
     image = nb.load(str(converted))
     if len(image.shape) != 4 or image.shape[3] <= noise_volumes:
@@ -199,6 +268,7 @@ def _split_bold_and_noise(
             f"Expected a 4D BOLD acquisition with more than {noise_volumes} frames: "
             f"{converted} has shape {image.shape}"
         )
+    _correct_3d_volume_repetition_time(metadata, image, sidecar=sidecar)
     signal = np.asanyarray(image.dataobj[..., :-noise_volumes])
     noise = np.asanyarray(image.dataobj[..., -noise_volumes:])
     bold_target.parent.mkdir(parents=True, exist_ok=True)
@@ -216,11 +286,12 @@ def _copy_nifti_and_json(
 ) -> tuple[Path, Path]:
     target.parent.mkdir(parents=True, exist_ok=True)
     converted_image = nb.load(str(image))
-    converted_image.to_filename(target)
-    output_sidecar = sidecar_for(target)
     metadata = read_json(sidecar)
     if rule is not None:
         _apply_phase_encoding_direction(metadata, rule, sidecar=sidecar)
+    _correct_3d_volume_repetition_time(metadata, converted_image, sidecar=sidecar)
+    converted_image.to_filename(target)
+    output_sidecar = sidecar_for(target)
     metadata.update(metadata_updates)
     write_json(output_sidecar, metadata)
     return target.resolve(), output_sidecar.resolve()
@@ -275,18 +346,21 @@ def _convert_plan_to_bids(
             acq = _acq_entity(rule.acquisition)
             run_entity = _run_entity(assigned_run)
             bold_name = f"{prefix}_task-{task}{acq}{run_entity}_bold.nii.gz"
-            noise_acq = _check_label(rule.acquisition or task, "acq")
-            noise_name = f"{prefix}_acq-{noise_acq}{run_entity}_mod-bold_noRF.nii.gz"
+            noise_name = (
+                f"{prefix}_task-{task}{acq}{run_entity}_mod-bold_noRF.nii.gz"
+            )
             bold_target = session_root / "func" / bold_name
-            noise_target = session_root / config.ingest.no_rf_datatype / noise_name
+            noise_target = session_root / "func" / noise_name
+            metadata = read_json(converted_json)
+            _apply_phase_encoding_direction(metadata, rule, sidecar=converted_json)
             bold_path, noise_path = _split_bold_and_noise(
                 converted,
                 bold_target,
                 noise_target,
                 noise_volumes=config.ingest.trailing_no_rf_volumes,
+                metadata=metadata,
+                sidecar=converted_json,
             )
-            metadata = read_json(converted_json)
-            _apply_phase_encoding_direction(metadata, rule, sidecar=converted_json)
             metadata.update(
                 {
                     "TaskName": task,
@@ -296,9 +370,8 @@ def _convert_plan_to_bids(
             )
             write_json(sidecar_for(bold_path), metadata)
             noise_metadata = dict(metadata)
-            for key in ("TaskName", "B0FieldSource", "NORDICNoiseFile"):
+            for key in ("B0FieldSource", "NORDICNoiseFile"):
                 noise_metadata.pop(key, None)
-            noise_metadata["Modality"] = "bold"
             noise_metadata["NumberOfVolumes"] = config.ingest.trailing_no_rf_volumes
             write_json(sidecar_for(noise_path), noise_metadata)
             products.append(
