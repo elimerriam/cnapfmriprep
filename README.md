@@ -4,6 +4,18 @@ CNAP fMRI Prep (`cnapfmriprep`) is an alpha, study-configured Pydra pipeline for
 fMRI. It stops before anatomical alignment and response estimation so that the
 native-resolution outputs can be used with mrAlign and mrTools.
 
+## Release 0.3.2: portable installation diagnostics
+
+Version 0.3.2 hardens fresh-computer setup. `cnapfmriprep doctor` now checks
+the supported Python and pinned Pydra versions, package imports, FSL shell
+variables and TOPUP configuration files, Conda-installed ANTs commands, MATLAB,
+the BIDS validator, and the configured NORDIC checkout. An optional bounded
+MATLAB license probe distinguishes installation problems from license checkout
+failures.
+
+The release also adds macOS and Linux tests for Python 3.11 and 3.12, package
+build checks, and automatic source/wheel assets for tagged GitHub releases.
+
 ## Release 0.3.1: cnapfmriprep rename
 
 The installable distribution, Python package, provenance metadata, and primary
@@ -130,15 +142,31 @@ conda env create -f environment.yml
 conda activate cnapfmriprep
 
 cnapfmriprep version
-cnapfmriprep doctor
+cnapfmriprep doctor --config config/my_study.yaml
 ```
 
-`cnapfmriprep doctor` reports the active interpreter, installed package paths, dependency versions, and whether the required Pydra 0.25 API is available.
+`doctor` exits successfully only when the required installation checks pass and
+prints a JSON report with specific remedies. The MATLAB license probe is
+explicit because it launches MATLAB:
+
+```bash
+cnapfmriprep doctor --config config/my_study.yaml --check-matlab-license
+```
+
+For `tcsh`, print commands that configure the current terminal without changing
+`.tcshrc` or any other startup file:
+
+```tcsh
+cnapfmriprep doctor --fix-shell tcsh --fsldir /absolute/path/to/fsl
+```
+
+Review the printed commands, run them in the terminal, and then rerun `doctor`.
+The command generator also accepts `csh`, `bash`, `zsh`, and `fish`.
 
 Expected version:
 
 ```text
-0.3.1
+0.3.2
 ```
 
 ## Inventory an XNAT archive

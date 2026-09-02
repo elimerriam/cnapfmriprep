@@ -9,13 +9,11 @@ wrong version.
 from __future__ import annotations
 
 import importlib
-import importlib.metadata
 import json
 import os
 import shutil
-import sys
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 import typer
 
@@ -60,13 +58,6 @@ def _load_attr(module_name: str, attribute: str):
         raise typer.Exit(code=2) from error
 
 
-def _distribution_version(name: str) -> str | None:
-    try:
-        return importlib.metadata.version(name)
-    except importlib.metadata.PackageNotFoundError:
-        return None
-
-
 @app.command("version")
 def version_command() -> None:
     """Print the cnapfmriprep version."""
@@ -74,92 +65,41 @@ def version_command() -> None:
 
 
 @app.command("doctor")
-def doctor_command() -> None:
-    """Report the active interpreter, package locations, and import health."""
-    distributions = [
-        "cnapfmriprep",
-        "typer",
-        "click",
-        "pydra",
-        "nibabel",
-        "pydicom",
-        "pydantic",
-        "numpy",
-        "scipy",
-        "nitransforms",
-        "PyYAML",
-    ]
-    modules = [
-        "cnapfmriprep.config",
-        "cnapfmriprep.dicom",
-        "cnapfmriprep.ingest",
-        "cnapfmriprep.pydra_workflows",
-        "cnapfmriprep.preprocess",
-    ]
-    imports: dict[str, dict[str, Any]] = {}
-    failed = False
-    for module_name in modules:
+def doctor_command(
+    config_file: Annotated[
+        Path | None, typer.Option("--config", exists=True, readable=True)
+    ] = None,
+    check_matlab_license: Annotated[
+        bool, typer.Option("--check-matlab-license")
+    ] = False,
+    fix_shell: Annotated[str | None, typer.Option("--fix-shell")] = None,
+    fsldir: Annotated[Path | None, typer.Option("--fsldir")] = None,
+) -> None:
+    """Diagnose portability issues or print reviewed shell setup commands."""
+    collect_diagnostics = _load_attr("diagnostics", "collect_diagnostics")
+    render_shell_setup = _load_attr("diagnostics", "render_shell_setup")
+    if fix_shell:
+        inferred_fsldir = fsldir or (
+            Path(os.environ["FSLDIR"]) if os.environ.get("FSLDIR") else None
+        )
         try:
-            module = importlib.import_module(module_name)
-            imports[module_name] = {
-                "ok": True,
-                "file": str(getattr(module, "__file__", "")),
-            }
-        except Exception as error:  # Diagnostic command must report all import failures.
-            failed = True
-            imports[module_name] = {
-                "ok": False,
-                "error_type": type(error).__name__,
-                "error": str(error),
-            }
-
-    try:
-        pydra_module = importlib.import_module("pydra")
-        pydra_api = {
-            "import_ok": True,
-            "file": str(getattr(pydra_module, "__file__", "")),
-            "has_Submitter": hasattr(pydra_module, "Submitter"),
-            "has_Workflow": hasattr(pydra_module, "Workflow"),
-            "has_mark": hasattr(pydra_module, "mark"),
-        }
-        if not all(
-            pydra_api[key]
-            for key in ("has_Submitter", "has_Workflow", "has_mark")
-        ):
-            failed = True
-    except Exception as error:
-        failed = True
-        pydra_api = {
-            "import_ok": False,
-            "error_type": type(error).__name__,
-            "error": str(error),
-        }
-
-    executable_names = [
-        "python",
-        "cnapfmriprep",
-        "dcm2niix",
-        "topup",
-        "antsRegistration",
-        "antsApplyTransforms",
-        "matlab",
-        "bids-validator-deno",
-        "bids-validator",
-    ]
-    report = {
-        "python_executable": sys.executable,
-        "python_version": sys.version,
-        "conda_prefix": os.environ.get("CONDA_PREFIX"),
-        "cnapfmriprep_version": __version__,
-        "cnapfmriprep_package": str(Path(__file__).resolve().parent),
-        "console_script": shutil.which("cnapfmriprep"),
-        "executables": {name: shutil.which(name) for name in executable_names},
-        "distributions": {name: _distribution_version(name) for name in distributions},
-        "pydra_025_api": pydra_api,
-        "imports": imports,
-    }
+            typer.echo(
+                render_shell_setup(
+                    fix_shell,
+                    fsldir=inferred_fsldir,
+                    conda_prefix=os.environ.get("CONDA_PREFIX"),
+                )
+            )
+        except ValueError as error:
+            typer.echo(f"ERROR: {error}", err=True)
+            raise typer.Exit(code=2) from error
+        return
+    report = collect_diagnostics(
+        config_file=config_file,
+        check_matlab_license=check_matlab_license,
+    )
     _emit(report)
-    if failed:
+    if not report["ok"]:
         raise typer.Exit(code=1)
 
 

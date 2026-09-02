@@ -38,4 +38,4 @@ def test_version_starts_without_preprocessing_imports() -> None:
         capture_output=True,
         text=True,
     )
-    assert result.stdout.strip() == "0.3.1"
+    assert result.stdout.strip() == "0.3.2"

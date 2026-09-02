@@ -1,8 +1,9 @@
-# CNAP fMRI Prep 0.3.1 quick start
+# CNAP fMRI Prep 0.3.2 quick start
 
-Version 0.3.1 supports variable session run names/counts, one shared TOPUP
+Version 0.3.2 supports variable session run names/counts, one shared TOPUP
 estimate, one shared robust motion reference, live terminal progress, execution
-profiles, and safe recovery from interrupted Pydra cache entries.
+profiles, safe recovery from interrupted Pydra cache entries, and portable
+installation diagnostics.
 
 ```bash
 git clone https://github.com/elimerriam/cnapfmriprep.git
@@ -12,6 +13,22 @@ conda activate cnapfmriprep
 cnapfmriprep version
 cnapfmriprep doctor
 ```
+
+Before processing, verify the configured NORDIC checkout and external tools:
+
+```bash
+cnapfmriprep doctor --config config/my_study.yaml
+```
+
+If FSL is installed but not initialized in a `tcsh` terminal, print the exact
+current-shell commands (no startup files are edited):
+
+```tcsh
+cnapfmriprep doctor --fix-shell tcsh --fsldir /absolute/path/to/fsl
+```
+
+To test MATLAB license checkout as well, add `--check-matlab-license` to the
+normal `doctor --config ...` command.
 
 Create the study configuration with the local browser assistant:
 

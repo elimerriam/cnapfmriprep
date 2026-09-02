@@ -11,6 +11,7 @@ def test_required_source_modules_are_present() -> None:
         "config.py",
         "derivatives.py",
         "dicom.py",
+        "diagnostics.py",
         "errors.py",
         "ingest.py",
         "motion.py",

@@ -1,6 +1,7 @@
-include README.md QUICKSTART.md TEST_REPORT.md MIGRATION_0.2.0.md HOTFIX_0.2.1.md
-include RELEASE_0.3.1.md LICENSE NOTICE environment.yml
-recursive-include config *.yaml
+include README.md QUICKSTART.md TEST_REPORT*.md MIGRATION_0.2.0.md HOTFIX_0.2.1.md
+include RELEASE_*.md LICENSE NOTICE environment.yml ROADMAP.md
+include config/example_study.yaml
+exclude config/my_study.yaml
 recursive-include scripts *
 recursive-include tests *.py
 recursive-include src/cnapfmriprep/matlab *.m
