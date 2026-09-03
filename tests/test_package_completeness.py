@@ -14,6 +14,7 @@ def test_required_source_modules_are_present() -> None:
         "diagnostics.py",
         "errors.py",
         "ingest.py",
+        "job.py",
         "motion.py",
         "nordic.py",
         "preprocess.py",
@@ -25,6 +26,7 @@ def test_required_source_modules_are_present() -> None:
         "utils.py",
         "execution.py",
         "setup_assistant.py",
+        "status.py",
     }
     missing = sorted(name for name in required if not (package / name).is_file())
     assert not missing, f"Missing package modules: {missing}"

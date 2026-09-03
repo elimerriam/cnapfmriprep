@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ import nibabel as nb
 import numpy as np
 
 from .errors import ExternalCommandError, ValidationError
+from .progress import emit_progress
 from .utils import ensure_dir, run_command, same_nifti_grid, write_json
 
 
@@ -81,6 +83,10 @@ def _run_nordic_matlab(
     factor_error: float,
     save_gfactor_map: bool,
     save_additional_info: bool,
+    license_retries: int,
+    license_retry_initial_seconds: float,
+    license_retry_max_seconds: float,
+    progress_context: dict[str, Any] | None,
 ) -> dict[str, Path | None]:
     checkout = checkout.expanduser().resolve()
     if not (checkout / "NIFTI_NORDIC.m").is_file():
@@ -105,10 +111,32 @@ def _run_nordic_matlab(
         f"addpath('{_matlab_escape(wrapper_dir)}'); "
         f"run_nordic_job('{_matlab_escape(job_file)}');"
     )
-    run_command(
-        [_find_executable(matlab_command), "-batch", expression],
-        log_file=output_dir / "matlab_nordic.log",
-    )
+    matlab_args = [_find_executable(matlab_command), "-batch", expression]
+    matlab_log = output_dir / "matlab_nordic.log"
+    for attempt in range(license_retries + 1):
+        try:
+            run_command(matlab_args, log_file=matlab_log)
+            break
+        except ExternalCommandError as error:
+            if attempt >= license_retries or not _temporary_license_failure(str(error)):
+                raise
+            archived_log = output_dir / f"matlab_nordic_license_attempt-{attempt + 1:02d}.log"
+            if matlab_log.is_file():
+                shutil.copy2(matlab_log, archived_log)
+            delay = min(
+                license_retry_initial_seconds * (2**attempt),
+                license_retry_max_seconds,
+            )
+            emit_progress(
+                progress_context,
+                "NORDIC",
+                "retrying",
+                message=(
+                    f"temporary MATLAB license failure; retry {attempt + 1}/{license_retries} "
+                    f"in {delay:g}s"
+                ),
+            )
+            time.sleep(delay)
 
     output_candidates = [
         output_dir / f"{prefix}.nii.gz",
@@ -137,6 +165,21 @@ def _run_nordic_matlab(
         "additional_info": info.resolve() if info.exists() else None,
         "job_json": job_file,
     }
+
+
+def _temporary_license_failure(message: str) -> bool:
+    """Recognize MATLAB failures that can clear without changing the job."""
+    lowered = message.casefold()
+    phrases = (
+        "license checkout failed",
+        "license manager error",
+        "no licenses available",
+        "all licenses are in use",
+        "licensed number of users already reached",
+        "unable to checkout a license",
+        "error checking out license",
+    )
+    return any(phrase in lowered for phrase in phrases)
 
 
 def _split_nordic_output(
@@ -203,6 +246,7 @@ def run_nordic_stage(
     output_dir: str,
     nordic_config: dict[str, Any],
     expected_noise_volumes: int = 2,
+    progress_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Pydra-friendly NORDIC stage."""
     root = ensure_dir(output_dir)
@@ -224,6 +268,14 @@ def run_nordic_stage(
         factor_error=float(nordic_config.get("factor_error", 1.0)),
         save_gfactor_map=bool(nordic_config.get("save_gfactor_map", True)),
         save_additional_info=bool(nordic_config.get("save_additional_info", True)),
+        license_retries=int(nordic_config.get("matlab_license_retries", 3)),
+        license_retry_initial_seconds=float(
+            nordic_config.get("matlab_license_retry_initial_seconds", 30.0)
+        ),
+        license_retry_max_seconds=float(
+            nordic_config.get("matlab_license_retry_max_seconds", 300.0)
+        ),
+        progress_context=progress_context,
     )
     nordic_bold, nordic_noise = _split_nordic_output(
         Path(matlab_outputs["full_output"]),

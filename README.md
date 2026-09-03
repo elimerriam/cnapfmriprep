@@ -4,6 +4,19 @@ CNAP fMRI Prep (`cnapfmriprep`) is an alpha, study-configured Pydra pipeline for
 fMRI. It stops before anatomical alignment and response estimation so that the
 native-resolution outputs can be used with mrAlign and mrTools.
 
+## Release 0.4.0: job status, resume, and recovery
+
+Version 0.4.0 adds a durable job manifest and single-writer work-directory
+lease. A second terminal can inspect an active job with `cnapfmriprep status`,
+including shared TOPUP state, per-run stages, volume progress, cache state, and
+estimated remaining time. `cnapfmriprep resume` replays the recorded invocation
+and reports every Pydra stage reused from cache versus recomputed.
+
+Ctrl-C and SIGTERM now leave an explicit interrupted state and a clean restart
+point. Locks whose local owner is demonstrably gone are archived, while active
+or uncertain locks are never modified. Recognized temporary MATLAB license
+checkout failures are retried with configurable bounded exponential backoff.
+
 ## Release 0.3.2: portable installation diagnostics
 
 Version 0.3.2 hardens fresh-computer setup. `cnapfmriprep doctor` now checks
@@ -415,15 +428,46 @@ and logical CPU count.
 
 ### Restarting after an interruption
 
-Restart the same command with the same work directory. Before launching Pydra,
-CNAP fMRI Prep checks the cache and moves only invalid empty results into
-`pydra-cache/interrupted-cache-backups/`; valid completed work remains reusable.
-It refuses to modify a cache containing an active lock.
+Inspect a running or interrupted job from another terminal:
+
+```bash
+cnapfmriprep status --work-dir work/preprocess-sub001-ses01
+```
+
+Add `--json` for a machine-readable snapshot. The status command is read-only
+and distinguishes running, waiting, completed, cached, failed, interrupted, and
+completed-but-unpublished stages. When volume timings are available, it reports
+an estimated time remaining.
+
+After Ctrl-C, SIGTERM, or a failure, resume the invocation recorded in
+`WORK_DIR/job.json`:
+
+```bash
+cnapfmriprep resume --work-dir work/preprocess-sub001-ses01
+```
+
+Restarting the original command with the same work directory remains supported.
+Before launching Pydra, CNAP fMRI Prep checks the cache and moves only invalid
+results and demonstrably stale locks into
+`pydra-cache/interrupted-cache-backups/` (with stale job leases retained under
+`WORK_DIR/stale-locks/`); valid completed work remains reusable.
+It never modifies an active or uncertain lock. Each resumed result records the
+exact stages reused from cache and those recomputed.
 
 To inspect and perform that recovery without starting preprocessing:
 
 ```bash
 cnapfmriprep recover-cache --work-dir work/preprocess-sub001-ses01
+```
+
+Temporary MATLAB license checkout failures are retried without rerunning earlier
+work. Configure the bounded backoff under `nordic`:
+
+```yaml
+nordic:
+  matlab_license_retries: 3
+  matlab_license_retry_initial_seconds: 30
+  matlab_license_retry_max_seconds: 300
 ```
 
 To publish only one target run while retaining the shared reference behavior:

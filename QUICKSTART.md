@@ -1,9 +1,9 @@
-# CNAP fMRI Prep 0.3.2 quick start
+# CNAP fMRI Prep 0.4.0 quick start
 
-Version 0.3.2 supports variable session run names/counts, one shared TOPUP
+Version 0.4.0 supports variable session run names/counts, one shared TOPUP
 estimate, one shared robust motion reference, live terminal progress, execution
-profiles, safe recovery from interrupted Pydra cache entries, and portable
-installation diagnostics.
+profiles, live status inspection, explicit resume, safe recovery from interrupted
+Pydra cache entries, and portable installation diagnostics.
 
 ```bash
 git clone https://github.com/elimerriam/cnapfmriprep.git
@@ -122,9 +122,23 @@ cnapfmriprep preprocess ./bids ./derivatives/cnapfmriprep \
 Progress appears in the terminal and is saved in
 `work/preprocess-sub001-ses01/progress.jsonl`.
 
-After a crash or forced stop, rerun the same command with the same work
-directory. CNAP fMRI Prep automatically quarantines only invalid empty Pydra
-results and preserves completed work. Manual recovery is also available:
+From another terminal, inspect the shared and per-run state without changing the
+active work directory:
+
+```bash
+cnapfmriprep status --work-dir work/preprocess-sub001-ses01
+```
+
+After a crash or forced stop, resume the saved invocation. Completed tasks are
+reported as cache hits and are not recomputed:
+
+```bash
+cnapfmriprep resume --work-dir work/preprocess-sub001-ses01
+```
+
+Rerunning the original command with the same work directory remains supported.
+CNAP fMRI Prep automatically quarantines invalid results and demonstrably stale
+locks while preserving completed work. Manual recovery is also available:
 
 ```bash
 cnapfmriprep recover-cache --work-dir work/preprocess-sub001-ses01

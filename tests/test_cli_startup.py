@@ -38,4 +38,16 @@ def test_version_starts_without_preprocessing_imports() -> None:
         capture_output=True,
         text=True,
     )
-    assert result.stdout.strip() == "0.3.2"
+    assert result.stdout.strip() == "0.4.0"
+
+
+def test_help_lists_status_and_resume_commands() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "cnapfmriprep.cli", "--help"],
+        check=True,
+        env=_environment(),
+        capture_output=True,
+        text=True,
+    )
+    assert "status" in result.stdout
+    assert "resume" in result.stdout

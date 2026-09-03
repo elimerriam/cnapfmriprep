@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -12,6 +14,14 @@ from .cache import recover_interrupted_pydra_cache
 from .config import StudyConfig
 from .derivatives import publish_run_derivatives
 from .errors import ValidationError
+from .job import (
+    WorkDirectoryLease,
+    begin_job_attempt,
+    finish_job_attempt,
+    graceful_shutdown_signals,
+    read_job_manifest,
+    update_job_manifest,
+)
 from .progress import ProgressPrinter, emit_progress, progress_context
 from .pydra_workflows import build_session_workflow, execute_session_workflow
 from .utils import assert_same_nifti_grid, ensure_dir, write_json
@@ -67,6 +77,49 @@ def _is_target(record: dict[str, Any], task: str | None, run: int | None) -> boo
     return True
 
 
+def _attempt_cache_usage(progress_file: Path) -> dict[str, list[dict[str, str | None]]]:
+    """Summarize cache hits and recomputed task stages in the latest attempt."""
+    if not progress_file.is_file():
+        return {"reused": [], "recomputed": []}
+    events: list[dict[str, Any]] = []
+    for line in progress_file.read_text().splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event, dict):
+            events.append(event)
+    boundary = 0
+    for index, event in enumerate(events):
+        if (
+            event.get("run_index") is None
+            and event.get("stage") == "preprocessing"
+            and event.get("status") == "started"
+        ):
+            boundary = index
+    task_stages = {"NORDIC", "TOPUP", "SDC warp preparation", "QC", "motion correction and resampling"}
+    reused: list[dict[str, str | None]] = []
+    recomputed: list[dict[str, str | None]] = []
+    for event in events[boundary:]:
+        stage = str(event.get("stage"))
+        if stage not in task_stages:
+            continue
+        record = {
+            "run_label": event.get("run_label"),
+            "stage": stage,
+            "cache_key": (
+                str(event.get("message")).removeprefix("reused ")
+                if event.get("status") == "cached" and event.get("message")
+                else None
+            ),
+        }
+        if event.get("status") == "cached":
+            reused.append(record)
+        elif event.get("status") == "finished":
+            recomputed.append(record)
+    return {"reused": reused, "recomputed": recomputed}
+
+
 def _fieldmap_signature(record: dict[str, Any]) -> tuple[tuple[str, ...], tuple[str, ...]]:
     return (
         tuple(sorted(str(Path(path).resolve()) for path in record["fieldmaps"])),
@@ -115,6 +168,117 @@ def preprocess_dataset(
     task: str | None = None,
     run: int | None = None,
 ) -> dict[str, Any]:
+    """Run preprocessing under a durable, restart-safe work-directory lease."""
+    work_root = ensure_dir(work_dir)
+    invocation = {
+        "bids_dir": str(Path(bids_dir).expanduser().resolve()),
+        "derivatives_dir": str(Path(derivatives_dir).expanduser().resolve()),
+        "config": config.model_dump(mode="json"),
+        "subject": subject,
+        "session": session,
+        "task": task,
+        "run": run,
+        "work_dir": str(work_root),
+        "pipeline_version": __version__,
+    }
+    with WorkDirectoryLease(work_root) as lease:
+        manifest = begin_job_attempt(
+            work_root,
+            command="preprocess",
+            invocation=invocation,
+        )
+        job_progress = progress_context(work_root / "progress.jsonl", run_label="Session")
+        emit_progress(
+            job_progress,
+            "preprocessing",
+            "started",
+            message=f"attempt {manifest['attempt']}: validating inputs and building workflow",
+        )
+        if lease.archived_stale_lock:
+            update_job_manifest(work_root, archived_stale_lock=lease.archived_stale_lock)
+        try:
+            with graceful_shutdown_signals():
+                result = _preprocess_dataset(
+                    bids_dir,
+                    derivatives_dir,
+                    config=config,
+                    subject=subject,
+                    session=session,
+                    work_dir=work_root,
+                    task=task,
+                    run=run,
+                    attempt=int(manifest["attempt"]),
+                )
+        except (KeyboardInterrupt, SystemExit) as error:
+            finish_job_attempt(work_root, "interrupted", error=type(error).__name__)
+            emit_progress(
+                job_progress,
+                "preprocessing",
+                "interrupted",
+                message=f"{type(error).__name__}; safe to resume",
+            )
+            raise
+        except BaseException as error:
+            finish_job_attempt(
+                work_root,
+                "failed",
+                error=f"{type(error).__name__}: {error}",
+            )
+            emit_progress(
+                job_progress,
+                "preprocessing",
+                "failed",
+                message=f"{type(error).__name__}: {error}",
+            )
+            raise
+        finish_job_attempt(work_root, "completed")
+        return result
+
+
+def resume_preprocessing(work_dir: str | Path) -> dict[str, Any]:
+    """Replay a recorded preprocessing invocation and reuse valid cached tasks."""
+    root = Path(work_dir).expanduser().resolve()
+    if not (root / "job.json").is_file() and (root / "preprocess" / "job.json").is_file():
+        root = root / "preprocess"
+    manifest = read_job_manifest(root)
+    if manifest is None:
+        raise ValidationError(
+            f"No resumable job manifest was found in {root}. Restart older jobs with "
+            "their original preprocess command."
+        )
+    if manifest.get("command") != "preprocess":
+        raise ValidationError(f"Unsupported resumable command: {manifest.get('command')!r}")
+    invocation = manifest.get("invocation")
+    if not isinstance(invocation, dict):
+        raise ValidationError(f"Job manifest has no valid invocation: {root / 'job.json'}")
+    try:
+        config = StudyConfig.model_validate(invocation["config"])
+        return preprocess_dataset(
+            invocation["bids_dir"],
+            invocation["derivatives_dir"],
+            config=config,
+            subject=str(invocation["subject"]),
+            session=invocation.get("session"),
+            work_dir=root,
+            task=invocation.get("task"),
+            run=invocation.get("run"),
+        )
+    except KeyError as error:
+        raise ValidationError(f"Job manifest is missing invocation field {error}") from error
+
+
+def _preprocess_dataset(
+    bids_dir: str | Path,
+    derivatives_dir: str | Path,
+    *,
+    config: StudyConfig,
+    subject: str,
+    session: str | None,
+    work_dir: str | Path,
+    task: str | None = None,
+    run: int | None = None,
+    attempt: int = 1,
+) -> dict[str, Any]:
     """Preprocess selected runs in one Pydra graph.
 
     By default, TOPUP is estimated once from the shared AP/PA pair. A robust
@@ -124,8 +288,11 @@ def preprocess_dataset(
     """
     bids_root = Path(bids_dir).resolve()
     derivatives_root = ensure_dir(derivatives_dir)
-    work_root = ensure_dir(work_dir)
-    cache_recovery = recover_interrupted_pydra_cache(work_root / "pydra-cache")
+    work_root = Path(work_dir).expanduser().resolve()
+    cache_recovery = recover_interrupted_pydra_cache(
+        work_root / "pydra-cache",
+        current_job_pid=os.getpid(),
+    )
     semantic_validate(
         bids_root,
         subject=subject,
@@ -174,6 +341,7 @@ def preprocess_dataset(
         for index, record in enumerate(workflow_runs)
         if str(Path(record["bold"]).resolve()) == reference_path
     )
+    target_paths = {str(Path(record["bold"]).resolve()) for record in targets}
 
     _validate_shared_inputs(
         workflow_runs,
@@ -198,10 +366,23 @@ def preprocess_dataset(
             }
         )
 
+    update_job_manifest(
+        work_root,
+        runs=[
+            {
+                "index": index + 1,
+                "label": run_input["display_label"],
+                "raw_bold": run_input["raw_bold"],
+                "publish": run_input["raw_bold"] in target_paths,
+            }
+            for index, run_input in enumerate(graph_inputs)
+        ],
+    )
+
     session_label = f"sub_{subject}" + (f"_ses_{session}" if session else "")
     progress_file = work_root / "progress.jsonl"
     workflow, plan = build_session_workflow(
-        name=f"cnapfmriprep_{session_label}",
+        name=f"cnapfmriprep_{session_label}_attempt_{attempt:03d}",
         cache_dir=work_root / "pydra-cache",
         runs=graph_inputs,
         session_work_dir=work_root / "session",
@@ -225,7 +406,7 @@ def preprocess_dataset(
             "started",
             message=(
                 f"{len(workflow_runs)} run(s), execution profile "
-                f"{config.execution.resolved_profile}"
+                f"{config.execution.resolved_profile}, attempt {attempt}"
             ),
         )
         if cache_recovery["recovered"]:
@@ -242,6 +423,14 @@ def preprocess_dataset(
                 plugin=config.execution.pydra_plugin,
                 n_procs=config.execution.n_procs,
             )
+        except (KeyboardInterrupt, SystemExit) as error:
+            emit_progress(
+                session_progress,
+                "preprocessing",
+                "interrupted",
+                message=f"{type(error).__name__}; restart or use the resume command",
+            )
+            raise
         except BaseException as error:
             emit_progress(
                 session_progress,
@@ -252,7 +441,6 @@ def preprocess_dataset(
             raise
         emit_progress(session_progress, "workflow graph", "finished")
 
-    target_paths = {str(Path(record["bold"]).resolve()) for record in targets}
     results: list[dict[str, Any]] = []
     for index, (record, run_graph) in enumerate(
         zip(workflow_runs, graph_result["runs"], strict=True)
@@ -260,17 +448,35 @@ def preprocess_dataset(
         raw_bold = Path(record["bold"]).resolve()
         if str(raw_bold) not in target_paths:
             continue
-        published = publish_run_derivatives(
-            raw_bold=str(raw_bold),
-            nordic_outputs=run_graph["nordic"],
-            topup_outputs=run_graph["topup"],
-            field_outputs=run_graph["field"],
-            motion_outputs=run_graph["motion"],
-            qc_outputs=run_graph["qc"],
-            derivatives_root=str(derivatives_root),
-            resolved_config=resolved,
-            pipeline_version=__version__,
+        publish_context = progress_context(
+            progress_file,
+            run_index=index + 1,
+            run_count=len(workflow_runs),
+            run_label=graph_inputs[index]["display_label"],
+            interval_percent=config.execution.progress_interval_percent,
         )
+        emit_progress(publish_context, "publishing", "started")
+        try:
+            published = publish_run_derivatives(
+                raw_bold=str(raw_bold),
+                nordic_outputs=run_graph["nordic"],
+                topup_outputs=run_graph["topup"],
+                field_outputs=run_graph["field"],
+                motion_outputs=run_graph["motion"],
+                qc_outputs=run_graph["qc"],
+                derivatives_root=str(derivatives_root),
+                resolved_config=resolved,
+                pipeline_version=__version__,
+            )
+        except BaseException as error:
+            emit_progress(
+                publish_context,
+                "publishing",
+                "failed",
+                message=f"{type(error).__name__}: {error}",
+            )
+            raise
+        emit_progress(publish_context, "publishing", "finished")
         run_result = {
             "raw_bold": str(raw_bold),
             "workflow_index": index,
@@ -283,6 +489,16 @@ def preprocess_dataset(
         results.append(run_result)
 
     reference_motion = graph_result["runs"][reference_index]["motion"]
+    cache_usage = _attempt_cache_usage(progress_file)
+    emit_progress(
+        session_progress,
+        "cache reuse",
+        "finished",
+        message=(
+            f"{len(cache_usage['reused'])} task(s) reused; "
+            f"{len(cache_usage['recomputed'])} task(s) recomputed"
+        ),
+    )
     output = {
         "bids_dir": str(bids_root),
         "derivatives_dir": str(derivatives_root),
@@ -299,6 +515,7 @@ def preprocess_dataset(
         "workflow_run_count": len(workflow_runs),
         "published_run_count": len(results),
         "cache_recovery": cache_recovery,
+        "cache_usage": cache_usage,
         "runs": results,
     }
     if "shared_topup" in graph_result:

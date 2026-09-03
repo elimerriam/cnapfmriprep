@@ -10,7 +10,50 @@ from typing import Any
 from pydra import Submitter, Workflow, mark
 
 from .errors import WorkflowError
+from .progress import emit_progress
 from .progress import progress_context as make_progress_context
+
+
+def _report_cache_hit(
+    task: Any,
+    *,
+    progress_context: dict[str, Any] | None,
+    stage: str,
+) -> None:
+    """Emit a durable cache-hit event before Pydra returns a saved result."""
+    try:
+        result = task.result()
+    except Exception:
+        return
+    if (
+        result is not None
+        and not bool(getattr(result, "errored", False))
+        and getattr(result, "output", None) is not None
+    ):
+        emit_progress(
+            progress_context,
+            stage,
+            "cached",
+            message=f"reused {task.checksum}",
+        )
+
+
+def _add_task(
+    workflow: Workflow,
+    task: Any,
+    *,
+    progress_context: dict[str, Any] | None,
+    stage: str,
+) -> None:
+    """Add a task with a cache-use hook that also works in worker processes."""
+    from functools import partial
+
+    task.hooks.pre_run = partial(
+        _report_cache_hit,
+        progress_context=progress_context,
+        stage=stage,
+    )
+    workflow.add(task)
 
 
 def _new_workflow(*, name: str, cache_dir: str | Path) -> Workflow:
@@ -42,6 +85,7 @@ def nordic_task(
             output_dir,
             nordic_config,
             expected_noise_volumes,
+            progress_context,
         )
 
 
@@ -71,7 +115,7 @@ def field_task(
     from .progress import progress_stage
     from .transforms import run_field_transform_stage
 
-    with progress_stage(progress_context, "distortion field"):
+    with progress_stage(progress_context, "SDC warp preparation"):
         return run_field_transform_stage(
             topup_outputs,
             bold_file,
@@ -163,7 +207,8 @@ def build_run_workflow(
         run_label="Run 1/1",
         interval_percent=progress_interval_percent,
     )
-    workflow.add(
+    _add_task(
+        workflow,
         nordic_task(
             name="nordic",
             bold_file=raw_bold,
@@ -172,9 +217,12 @@ def build_run_workflow(
             nordic_config=resolved_config["nordic"],
             expected_noise_volumes=resolved_config["ingest"]["trailing_no_rf_volumes"],
             progress_context=run_progress,
-        )
+        ),
+        progress_context=run_progress,
+        stage="NORDIC",
     )
-    workflow.add(
+    _add_task(
+        workflow,
         topup_task(
             name="topup",
             fmap_files=fmap_files,
@@ -182,9 +230,12 @@ def build_run_workflow(
             output_dir=str(run_work / "topup"),
             topup_config=resolved_config["topup"],
             progress_context=run_progress,
-        )
+        ),
+        progress_context=run_progress,
+        stage="TOPUP",
     )
-    workflow.add(
+    _add_task(
+        workflow,
         field_task(
             name="field",
             topup_outputs=workflow.topup.lzout.out,
@@ -192,9 +243,12 @@ def build_run_workflow(
             bold_json=raw_bold_json,
             output_dir=str(run_work / "field"),
             progress_context=run_progress,
-        )
+        ),
+        progress_context=run_progress,
+        stage="SDC warp preparation",
     )
-    workflow.add(
+    _add_task(
+        workflow,
         motion_task(
             name="motion",
             nordic_outputs=workflow.nordic.lzout.out,
@@ -205,9 +259,12 @@ def build_run_workflow(
             execution_config=resolved_config["execution"],
             reference_motion_outputs=None,
             progress_context=run_progress,
-        )
+        ),
+        progress_context=run_progress,
+        stage="motion correction and resampling",
     )
-    workflow.add(
+    _add_task(
+        workflow,
         qc_task(
             name="qc",
             raw_bold=raw_bold,
@@ -217,7 +274,9 @@ def build_run_workflow(
             motion_outputs=workflow.motion.lzout.out,
             output_dir=str(run_work / "qc"),
             progress_context=run_progress,
-        )
+        ),
+        progress_context=run_progress,
+        stage="QC",
     )
     workflow.set_output(
         [
@@ -275,7 +334,8 @@ def build_session_workflow(
     topup_tasks: dict[int, Any] = {}
     if shared_topup:
         first = runs[0]
-        workflow.add(
+        _add_task(
+            workflow,
             topup_task(
                 name="topup_shared",
                 fmap_files=list(first["fmap_files"]),
@@ -283,14 +343,17 @@ def build_session_workflow(
                 output_dir=str(root / "shared_topup"),
                 topup_config=resolved_config["topup"],
                 progress_context=shared_progress,
-            )
+            ),
+            progress_context=shared_progress,
+            stage="TOPUP",
         )
         for index in range(len(runs)):
             topup_tasks[index] = workflow.topup_shared
     else:
         for index, run in enumerate(runs):
             task_name = f"topup_{index:03d}"
-            workflow.add(
+            _add_task(
+                workflow,
                 topup_task(
                     name=task_name,
                     fmap_files=list(run["fmap_files"]),
@@ -298,7 +361,9 @@ def build_session_workflow(
                     output_dir=str(root / f"run-{index:03d}" / "topup"),
                     topup_config=resolved_config["topup"],
                     progress_context=run_progress[index],
-                )
+                ),
+                progress_context=run_progress[index],
+                stage="TOPUP",
             )
             topup_tasks[index] = getattr(workflow, task_name)
 
@@ -308,7 +373,8 @@ def build_session_workflow(
         run_root = root / f"run-{index:03d}"
         nordic_name = f"nordic_{index:03d}"
         field_name = f"field_{index:03d}"
-        workflow.add(
+        _add_task(
+            workflow,
             nordic_task(
                 name=nordic_name,
                 bold_file=str(run["raw_bold"]),
@@ -319,10 +385,13 @@ def build_session_workflow(
                     "trailing_no_rf_volumes"
                 ],
                 progress_context=run_progress[index],
-            )
+            ),
+            progress_context=run_progress[index],
+            stage="NORDIC",
         )
         nordic_tasks[index] = getattr(workflow, nordic_name)
-        workflow.add(
+        _add_task(
+            workflow,
             field_task(
                 name=field_name,
                 topup_outputs=topup_tasks[index].lzout.out,
@@ -330,7 +399,9 @@ def build_session_workflow(
                 bold_json=str(run["raw_bold_json"]),
                 output_dir=str(run_root / "field"),
                 progress_context=run_progress[index],
-            )
+            ),
+            progress_context=run_progress[index],
+            stage="SDC warp preparation",
         )
         field_tasks[index] = getattr(workflow, field_name)
 
@@ -343,7 +414,8 @@ def build_session_workflow(
         reference_output = None
         if shared_motion_reference and index != reference_index:
             reference_output = motion_tasks[reference_index].lzout.out
-        workflow.add(
+        _add_task(
+            workflow,
             motion_task(
                 name=motion_name,
                 nordic_outputs=nordic_tasks[index].lzout.out,
@@ -354,14 +426,17 @@ def build_session_workflow(
                 execution_config=resolved_config["execution"],
                 reference_motion_outputs=reference_output,
                 progress_context=run_progress[index],
-            )
+            ),
+            progress_context=run_progress[index],
+            stage="motion correction and resampling",
         )
         motion_tasks[index] = getattr(workflow, motion_name)
 
     qc_tasks: dict[int, Any] = {}
     for index, run in enumerate(runs):
         qc_name = f"qc_{index:03d}"
-        workflow.add(
+        _add_task(
+            workflow,
             qc_task(
                 name=qc_name,
                 raw_bold=str(run["raw_bold"]),
@@ -371,7 +446,9 @@ def build_session_workflow(
                 motion_outputs=motion_tasks[index].lzout.out,
                 output_dir=str(root / f"run-{index:03d}" / "qc"),
                 progress_context=run_progress[index],
-            )
+            ),
+            progress_context=run_progress[index],
+            stage="QC",
         )
         qc_tasks[index] = getattr(workflow, qc_name)
 

@@ -176,3 +176,18 @@ shutil.copy2(moving, warped)
     assert references[0] == references[1] == references[2]
     assert reference_sources[0] == reference_sources[1] == reference_sources[2]
     assert reference_sources[0].endswith("run-000/nordic/desc-nordic_bold.nii.gz")
+
+    resumed = preprocess_dataset(
+        synthetic_bids_multi_run,
+        tmp_path / "derivatives",
+        config=config,
+        subject="001",
+        session="01",
+        work_dir=tmp_path / "work",
+    )
+    assert topup_counter.read_text() == "1"
+    assert len(resumed["cache_usage"]["reused"]) == 13
+    assert resumed["cache_usage"]["recomputed"] == []
+    manifest = json.loads((tmp_path / "work" / "job.json").read_text())
+    assert manifest["attempt"] == 2
+    assert manifest["state"] == "completed"

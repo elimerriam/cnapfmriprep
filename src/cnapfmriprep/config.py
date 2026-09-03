@@ -133,6 +133,9 @@ class NordicConfig(_Model):
     factor_error: float = Field(default=1.0, gt=0)
     save_gfactor_map: bool = True
     save_additional_info: bool = True
+    matlab_license_retries: int = Field(default=3, ge=0, le=20)
+    matlab_license_retry_initial_seconds: float = Field(default=30.0, ge=0, le=3600)
+    matlab_license_retry_max_seconds: float = Field(default=300.0, ge=0, le=3600)
 
     @model_validator(mode="after")
     def magnitude_only_required(self) -> NordicConfig:

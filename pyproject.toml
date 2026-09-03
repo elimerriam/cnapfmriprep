@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cnapfmriprep"
-version = "0.3.2"
+version = "0.4.0"
 description = "Pydra pipeline for multi-run high-resolution 7T fMRI: XNAT DICOM to BIDS, magnitude-only NORDIC, shared TOPUP, shared-reference ANTs motion correction, and QC"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"

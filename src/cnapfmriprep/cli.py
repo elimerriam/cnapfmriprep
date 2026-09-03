@@ -172,6 +172,35 @@ def recover_cache_command(
     _emit(result)
 
 
+@app.command("status")
+def status_command(
+    work_dir: Annotated[
+        Path, typer.Option("--work-dir", exists=True, file_okay=False)
+    ],
+    json_output: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    """Show live, read-only session and per-run job status."""
+    format_job_status = _load_attr("status", "format_job_status")
+    inspect_job_status = _load_attr("status", "inspect_job_status")
+    report = _run_guarded(inspect_job_status, work_dir)
+    if json_output:
+        _emit(report)
+    else:
+        typer.echo(format_job_status(report))
+
+
+@app.command("resume")
+def resume_command(
+    work_dir: Annotated[
+        Path, typer.Option("--work-dir", exists=True, file_okay=False)
+    ],
+) -> None:
+    """Resume the recorded preprocessing invocation using valid cached results."""
+    resume_preprocessing = _load_attr("preprocess", "resume_preprocessing")
+    result = _run_guarded(resume_preprocessing, work_dir)
+    _emit(result)
+
+
 @app.command("inventory")
 def inventory_command(
     archive: Annotated[Path, typer.Argument(exists=True, readable=True)],
@@ -389,7 +418,11 @@ def run_command_cli(
 
 def main() -> None:
     """Console-script entry point."""
-    app()
+    try:
+        app()
+    except KeyboardInterrupt as error:
+        typer.echo("Interrupted. Completed cache entries were preserved; use 'resume' to continue.", err=True)
+        raise SystemExit(130) from error
 
 
 if __name__ == "__main__":

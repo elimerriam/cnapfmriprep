@@ -78,6 +78,15 @@ def progress_stage(
     emit_progress(context, stage, "started")
     try:
         yield
+    except (KeyboardInterrupt, SystemExit) as error:
+        emit_progress(
+            context,
+            stage,
+            "interrupted",
+            message=f"{type(error).__name__}; safe to resume",
+            elapsed_seconds=time.monotonic() - started,
+        )
+        raise
     except BaseException as error:
         emit_progress(
             context,
@@ -153,6 +162,13 @@ def format_progress_event(event: dict[str, Any]) -> str:
         return f"{prefix}{phase}: {completed}/{total} ({percentage}%)"
     if status == "failed":
         return f"{prefix}{stage} failed: {event.get('message') or 'unknown error'}"
+    if status == "interrupted":
+        return f"{prefix}{stage} interrupted: {event.get('message') or 'safe to resume'}"
+    if status == "retrying":
+        return f"{prefix}{stage} retrying: {event.get('message') or 'temporary failure'}"
+    if status == "cached":
+        message = f" - {event['message']}" if event.get("message") else ""
+        return f"{prefix}{stage} cached{message}"
     elapsed = _format_elapsed(event.get("elapsed_seconds"))
     message = f" - {event['message']}" if event.get("message") else ""
     return f"{prefix}{stage} {status}{elapsed}{message}"

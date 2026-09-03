@@ -16,8 +16,8 @@ new features.
 
 ## 0.3.2: Installation and portability hardening
 
-Implementation status: complete in 0.3.2. Validation on a clean office computer
-remains the release acceptance test.
+Implementation status: complete in 0.3.2. Installation and pilot preprocessing
+on a clean second computer passed the release acceptance test on 2026-09-02.
 
 - Test clean installation on supported macOS and Linux systems.
 - Add automated GitHub tests for each commit and pull request.
@@ -41,6 +41,11 @@ remains the release acceptance test.
   Linux.
 
 ## 0.4.0: Job status, restart, and recovery
+
+Implementation status: complete in 0.4.0. Local unit and mocked multi-run
+acceptance tests cover status reduction, explicit resume, cache-hit reporting,
+stale-lock handling, and bounded MATLAB-license retry. A real interrupted-job
+resume remains the release acceptance test.
 
 - Add `cnapfmriprep status --work-dir ...` with a per-run session summary.
 - Distinguish completed, running, waiting, failed, cached, and unpublished
